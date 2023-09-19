@@ -1,0 +1,435 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Look for effect of different covariates on 2 groups separately
+
+
+```{r}
+install.packages('dplyr')
+install.packages('rstatix')
+library('dplyr')
+library('lme4')
+library('sjmisc')
+library("ggplot2")
+library('afex')
+library('jmv')
+library('emmeans')
+library('effectsize')
+library('rstatix')
+library('haven')
+library("readxl")
+library('expss')
+library('epiDisplay')
+library("writexl")
+```
+
+
+```{r}
+data <- read_excel("C:/Users/Admin/Desktop/ARBA/EEG behavioral measures/EEG_Beh_With_Adverse_Events.xlsx")
+```
+
+```{r}
+
+tab <- data.frame(sub = data$sub, gender = factor(data$GENDER_STD), race = factor(data$RACE_STD), age = data$AGE, verbal_IQ = data$VERBAL_IQ, nonverbal_IQ = data$NON_VERBAL_IQ, IQ = data$FULL_SCALE_IQ, nbr_AE = data$nbr_AE, SR = data$`Sleep Related`,
+                        condition = data$cond,
+                        VABS3_COM_W0 = data$VABS3_COM_SS.0, delta_VABS3_COM = data$delta_VABS3_COM,
+                        VABS3_SOC_W0 = data$VABS3_SOC_SS.0, delta_VABS3_SOC = data$delta_VABS3_SOC,
+                        VABS3_IPR_GSV_W0 = data$VABS3_IPR_GSV.0, delta_VABS3_IPR_GSV = data$delta_VABS3_IPR_GSV,
+                        VABS3_PLA_GSV_W0 = data$VABS3_PLA_GSV.0, delta_VABS3_PLA_GSV = data$delta_VABS3_PLA_GSV,  
+                        VABS3_COP_GSV_W0 = data$VABS3_COP_GSV.0, delta_VABS3_COP_GSV = data$delta_VABS3_COP_GSV, 
+                        AIM_total_W0 = data$AIM_total.0, delta_AIM_total = data$delta_AIM_total,
+                        AIM_sums_W0 = data$AIM_sums.0, delta_AIM_sums = data$delta_AIM_sums,
+                        AIM_atypical_W0 = data$AIM_atypical.0, delta_AIM_atypical = data$delta_AIM_atypical,
+                        AIM_recip_W0 = data$AIM_reciprocity.0, delta_AIM_recip = data$delta_AIM_reciprocity,
+                        AIM_com_W0 = data$AIM_communication.0, delta_AIM_com = data$delta_AIM_communication,
+                        AIM_rep_beh_W0 = data$AIM_repetitive_behavior.0, delta_AIM_rep_beh = data$delta_AIM_repetitive_behavior,
+                        AIM_rep_lang_W0 = data$AIM_repetitive_language.0, delta_AIM_rep_lang = data$delta_AIM_repetitive_language,
+                        AIM_frequency_W0 = data$AIM_frequency.0, delta_AIM_freq = data$delta_AIM_frequency,
+                        AIM_impact_W0 = data$AIM_impact.0, delta_AIM_impact = data$delta_AIM_impact,
+                        ABC_hyper_W0 = data$ABC_hyperactivity.0, delta_ABC_hyper = data$delta_ABC_hyperactivity,
+                        ABC_irrit_W0 = data$ABC_irritability.0, delta_ABC_irrit = data$delta_ABC_irritability,
+                        ABC_ste_beh_W0 = data$ABC_stereotypic_behavior.0, delta_ABC_ste_beh = data$delta_ABC_stereotypic_behavior,
+                        ABC_inap_speech_W0 = data$ABC_inappropriate_speech.0, delta_ABC_inap_speech = data$delta_ABC_inappropriate_speech,
+                        ABC_soc_wit_W0 = data$ABC_social_withdrawal.0, delta_ABC_soc_wit = data$delta_ABC_social_withdrawal,
+                        ABC_lethargy_W0 = data$ABC_lethargy.0, delta_ABC_lethargy = data$delta_ABC_lethargy, 
+                        SEQ_total_W0 = data$SEQ_total.0, delta_SEQ_total = data$delta_SEQ_total,
+                        SEQ_HYPER_W0 = data$SEQ_response_pattern_HYPER.0, delta_SEQ_HYPER = data$delta_SEQ_response_pattern_HYPER,
+                        SEQ_HYPO_W0 = data$SEQ_response_pattern_HYPO.0, delta_SEQ_HYPO = data$delta_SEQ_response_pattern_HYPO,
+                        SEQ_SIRS_W0 = data$SEQ_response_pattern_SIRS.0, delta_SEQ_SIRS = data$delta_SEQ_response_pattern_SIRS,
+                        SEQ_EP_W0 = data$SEQ_response_pattern_EP.0,  delta_SEQ_EP = data$delta_SEQ_response_pattern_EP,
+                        SEQ_nonsocial_W0 = data$SEQ_context_nonsocial.0, delta_SEQ_nonsocial = data$delta_SEQ_context_nonsocial,
+                        SEQ_social_W0 = data$SEQ_context_social.0, delta_SEQ_social = data$delta_SEQ_context_social,
+                        SEQ_auditory_W0 = data$SEQ_sensory_modality_auditory.0, delta_SEQ_auditory = data$delta_SEQ_sensory_modality_auditory,
+                        SEQ_visual_W0 = data$SEQ_sensory_modality_visual.0, delta_SEQ_visual = data$delta_SEQ_sensory_modality_visual,
+                        SEQ_tactile_W0 = data$SEQ_sensory_modality_tactile.0, delta_SEQ_tactile = data$delta_SEQ_sensory_modality_tactile,  
+                        SEQ_gusta_olfac_W0 = data$SEQ_sensory_modality_gustatory_olfactory.0, delta_SEQ_gusta_olfac = data$delta_SEQ_sensory_modality_gustatory_olfactory, 
+                        SEQ_ves_pro_W0 = data$SEQ_sensory_modality_vestibular_proprioception.0, delta_SEQ_ves_pro = data$delta_SEQ_sensory_modality_vestibular_proprioception,
+                        VABS3_COM_W16 = data$VABS3_COM_SS.112, VABS3_SOC_W16 = data$VABS3_SOC_SS.112, VABS3_IPR_GSV_W16 = data$VABS3_IPR_GSV.112, 
+                        VABS3_PLA_GSV_W16 = data$VABS3_PLA_GSV.112, VABS3_COP_GSV_W16 = data$VABS3_COP_GSV.112,
+                        AIM_total_W16 = data$AIM_total.112, AIM_sums_W16 = data$AIM_sums.112, AIM_atypical_W16 = data$AIM_atypical.112, AIM_recip_W16 = data$AIM_reciprocity.112,
+                        AIM_com_W16 = data$AIM_communication.112,  AIM_rep_beh_W16 = data$AIM_repetitive_behavior.112, AIM_rep_lang_W16 = data$AIM_repetitive_language.112, 
+                        AIM_frequency_W16 = data$AIM_frequency.112, AIM_impact_W16 = data$AIM_impact.112, ABC_hyper_W16 = data$ABC_hyperactivity.112, 
+                        ABC_irrit_W16 = data$ABC_irritability.112,  ABC_ste_beh_W16 = data$ABC_stereotypic_behavior.112, ABC_inap_speech_W16 = data$ABC_inappropriate_speech.112, 
+                        ABC_soc_wit_W16 = data$ABC_social_withdrawal.112, ABC_lethargy_W16 = data$ABC_lethargy.112,  
+                        SEQ_total_W16 = data$SEQ_total.112, SEQ_HYPER_W16 = data$SEQ_response_pattern_HYPER.112, SEQ_HYPO_W16 = data$SEQ_response_pattern_HYPO.112, 
+                        SEQ_SIRS_W16 = data$SEQ_response_pattern_SIRS.112, SEQ_EP_W16 = data$SEQ_response_pattern_EP.112, SEQ_nonsocial_W16 = data$SEQ_context_nonsocial.112, 
+                        SEQ_social_W16 = data$SEQ_context_social.112, SEQ_auditory_W16 = data$SEQ_sensory_modality_auditory.112, SEQ_visual_W16 = data$SEQ_sensory_modality_visual.112, 
+                        SEQ_tactile_W16 = data$SEQ_sensory_modality_tactile.112, SEQ_gusta_olfac_W16 = data$SEQ_sensory_modality_gustatory_olfactory.112, 
+                        SEQ_ves_pro_W16 = data$SEQ_sensory_modality_vestibular_proprioception.112)
+```
+
+
+
+```{r}
+tab['condition'][tab['condition'] == "0"] <- "placebo"
+tab['condition'][tab['condition'] == "1"] <- "ARBA"
+```
+
+-----------------------------------------------------------------------------
+Baseline characteristics
+```{r}
+frq(tab$condition)
+Rmisc::summarySE(tab, measurevar = "age", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab, measurevar = "age", na.rm = TRUE)
+
+frq(subset(tab, condition == "placebo")$gender)
+frq(subset(tab, condition == "ARBA")$gender)
+frq(tab$gender)
+
+
+frq(subset(tab, condition == "placebo")$race)
+frq(subset(tab, condition == "ARBA")$race)
+frq(tab$race)
+
+Rmisc::summarySE(tab, measurevar = "verbal_IQ", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab, measurevar = "nonverbal_IQ", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab, measurevar = "IQ", groupvars = "condition", na.rm = TRUE)
+```
+
+
+------------------------------------------------------------------------------
+# Potential covariates
+```{r}
+afex::aov_ez(data = tab, dv = 'age', between = "condition", id = 'sub', factorize = F)
+afex::aov_ez(data = tab, dv = 'verbal_IQ', between = "condition", id = 'sub', factorize = F)
+afex::aov_ez(data = tab, dv = 'nonverbal_IQ', between = "condition", id = 'sub', factorize = F)
+afex::aov_ez(data = tab, dv = 'IQ', between = "condition", id = 'sub', factorize = F)
+
+```
+
+------------------------------------------------------------------------------
+Vineland 3 (VABS-3)
+
+
+# Interpersonal relationships
+```{r}
+# pas besoin de centrer, donne la même chose finalement
+#tab <- tab %>% mutate(VABS3_IPR_GSV_c=VABS3_IPR_GSV_W0-mean(VABS3_IPR_GSV_W0))
+tab_ipr_gsv <- subset(tab, !is.na(VABS3_IPR_GSV_W0) & !is.na(VABS3_IPR_GSV_W16))
+
+descriptives(tab_ipr_gsv, VABS3_IPR_GSV_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+
+afex::aov_ez(data = tab_ipr_gsv, dv = 'VABS3_IPR_GSV_W16', between = "condition", covariate = c("VABS3_IPR_GSV_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_ipr_gsv, measurevar = "VABS3_IPR_GSV_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab, measurevar = "VABS3_IPR_GSV_W16", groupvars = "condition", na.rm = TRUE)
+```
+# Coping skills
+```{r}
+tab_cop_gsv <- subset(tab, !is.na(VABS3_COP_GSV_W0) & !is.na(VABS3_COP_GSV_W16))
+
+descriptives(tab_cop_gsv, VABS3_COP_GSV_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+
+afex::aov_ez(data = tab_cop_gsv, dv = 'VABS3_COP_GSV_W16', between = "condition", covariate = c("VABS3_COP_GSV_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_cop_gsv, measurevar = "VABS3_COP_GSV_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab, measurevar = "VABS3_COP_GSV_W16", groupvars = "condition", na.rm = TRUE)
+```
+# Play and leisure
+```{r}
+tab_pla_gsv <- subset(tab, sub!= "1140417" & sub != "3940485" & !is.na(VABS3_PLA_GSV_W0) & !is.na(VABS3_PLA_GSV_W16))
+
+descriptives(tab_pla_gsv, VABS3_PLA_GSV_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+
+afex::aov_ez(data = tab_pla_gsv, dv = 'VABS3_PLA_GSV_W16', between = "condition", covariate = c("VABS3_PLA_GSV_W0", "age"), id = 'sub', factorize = F)
+
+
+Rmisc::summarySE(tab_pla_gsv, measurevar = "VABS3_PLA_GSV_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_pla_gsv, measurevar = "VABS3_PLA_GSV_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Communication
+```{r}
+
+descriptives(tab, VABS3_COM_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab, dv = 'VABS3_COM_W16', between = "condition", covariate = c("VABS3_COM_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab, measurevar = "VABS3_COM_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab, measurevar = "VABS3_COM_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+------------------------------------------------------------------------------
+Autism Impact Measure (AIM)
+
+
+# Total
+```{r}
+tab_total <- subset(tab, !is.na(AIM_total_W0) & !is.na(AIM_total_W16))
+
+descriptives(tab_total, AIM_total_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_total, dv = 'AIM_total_W16', between = "condition", covariate = c("AIM_total_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_total, measurevar = "AIM_total_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_total, measurevar = "AIM_total_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Repetitive behaviour
+```{r}
+tab_rep_beh <- subset(tab, !is.na(AIM_rep_beh_W0) & !is.na(AIM_rep_beh_W16))
+
+descriptives(tab_rep_beh, AIM_rep_beh_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_rep_beh, dv = 'AIM_rep_beh_W16', between = "condition", covariate = c("AIM_rep_beh_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_rep_beh, measurevar = "AIM_rep_beh_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_rep_beh, measurevar = "AIM_rep_beh_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Communication
+Abnormal --> Wilcox
+```{r}
+tab_com <- subset(tab, !is.na(AIM_com_W0) & !is.na(AIM_com_W16))
+
+descriptives(tab_com, AIM_com_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+
+WRS2::t1waybt(data = tab_com, AIM_com_W16 ~ condition + age + AIM_com_W0, tr = 0.2, nboot = 1000)
+
+Rmisc::summarySE(tab_com, measurevar = "AIM_com_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_com, measurevar = "AIM_com_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Atypical behaviour
+```{r}
+tab_atypical <- subset(tab, !is.na(AIM_atypical_W0) & !is.na(AIM_atypical_W16))
+
+descriptives(tab_atypical, AIM_atypical_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_atypical, dv = 'AIM_atypical_W16', between = "condition", covariate = c("AIM_atypical_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_atypical, measurevar = "AIM_atypical_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_atypical, measurevar = "AIM_atypical_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Social reciprocity
+```{r}
+tab_recip <- subset(tab, !is.na(AIM_recip_W0) & !is.na(AIM_recip_W16))
+
+descriptives(tab_recip, AIM_recip_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_recip, dv = 'AIM_recip_W16', between = "condition", covariate = c("AIM_recip_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_recip, measurevar = "AIM_recip_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_recip, measurevar = "AIM_recip_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+
+
+
+------------------------------------------------------------------------------
+ABC
+
+# Irritability
+```{r}
+tab_irrit <- subset(tab, !is.na(ABC_irrit_W0) & !is.na(ABC_irrit_W16))
+
+descriptives(tab_irrit, ABC_irrit_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_irrit, dv = 'ABC_irrit_W16', between = "condition", covariate = c("ABC_irrit_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_irrit, measurevar = "ABC_irrit_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_irrit, measurevar = "ABC_irrit_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Stereotypic behaviour
+```{r}
+tab_ste_beh <- subset(tab, !is.na(ABC_ste_beh_W0) & !is.na(ABC_ste_beh_W16))
+
+descriptives(tab_ste_beh, ABC_ste_beh_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_ste_beh, dv = 'ABC_ste_beh_W16', between = "condition", covariate = c("ABC_ste_beh_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_ste_beh, measurevar = "ABC_ste_beh_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_ste_beh, measurevar = "ABC_ste_beh_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Hyperactivity/Noncompliance
+```{r}
+tab_hyper <- subset(tab, !is.na(ABC_hyper_W0) & !is.na(ABC_hyper_W16))
+
+descriptives(tab_hyper, ABC_hyper_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_hyper, dv = 'ABC_hyper_W16', between = "condition", covariate = c("ABC_hyper_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_hyper, measurevar = "ABC_hyper_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_hyper, measurevar = "ABC_hyper_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+
+# Inappropriate speech
+```{r}
+tab_inap_speech <- subset(tab, !is.na(ABC_inap_speech_W0) & !is.na(ABC_inap_speech_W16))
+
+descriptives(tab_inap_speech, ABC_inap_speech_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_inap_speech, dv = 'ABC_inap_speech_W16', between = "condition", covariate = c("ABC_inap_speech_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_inap_speech, measurevar = "ABC_inap_speech_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_inap_speech, measurevar = "ABC_inap_speech_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Lethargy
+```{r}
+tab_lethargy <- subset(tab, !is.na(ABC_lethargy_W0) & !is.na(ABC_lethargy_W16))
+
+descriptives(tab_lethargy, ABC_lethargy_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_lethargy, dv = 'ABC_lethargy_W16', between = "condition", covariate = c("ABC_lethargy_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_lethargy, measurevar = "ABC_lethargy_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_lethargy, measurevar = "ABC_lethargy_W16", groupvars = "condition", na.rm = TRUE)
+```
+------------------------------------------------------------------------------
+SEQ
+
+# Hyperresponsiveness
+```{r}
+tab_hyperr <- subset(tab, !is.na(SEQ_HYPER_W0) & !is.na(SEQ_HYPER_W16))
+
+descriptives(tab_hyperr, SEQ_HYPER_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_hyperr, dv = 'SEQ_HYPER_W16', between = "condition", covariate = c("SEQ_HYPER_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_hyperr, measurevar = "SEQ_HYPER_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_hyperr, measurevar = "SEQ_HYPER_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Hyporesponsiveness
+```{r}
+tab_hypo <- subset(tab, !is.na(SEQ_HYPO_W0) & !is.na(SEQ_HYPO_W16))
+
+descriptives(tab_hypo, SEQ_HYPO_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_hypo, dv = 'SEQ_HYPO_W16', between = "condition", covariate = c("SEQ_HYPO_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_hypo, measurevar = "SEQ_HYPO_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_hypo, measurevar = "SEQ_HYPO_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# SIRS
+```{r}
+tab_SIRS <- subset(tab, !is.na(SEQ_SIRS_W0) & !is.na(SEQ_SIRS_W16))
+
+descriptives(tab_SIRS, SEQ_SIRS_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_SIRS, dv = 'SEQ_SIRS_W16', between = "condition", covariate = c("SEQ_SIRS_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_SIRS, measurevar = "SEQ_SIRS_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_SIRS, measurevar = "SEQ_SIRS_W16", groupvars = "condition", na.rm = TRUE)
+```
+# Enhanced perception
+```{r}
+tab_EP <- subset(tab, !is.na(SEQ_EP_W0) & !is.na(SEQ_EP_W16))
+
+descriptives(tab_EP, SEQ_EP_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_EP, dv = 'SEQ_EP_W16', between = "condition", covariate = c("SEQ_EP_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_EP, measurevar = "SEQ_EP_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_EP, measurevar = "SEQ_EP_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+
+# Social context
+```{r}
+tab_social <- subset(tab, !is.na(SEQ_social_W0) & !is.na(SEQ_social_W16))
+
+descriptives(tab_social, SEQ_social_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_social, dv = 'SEQ_social_W16', between = "condition", covariate = c("SEQ_social_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_social, measurevar = "SEQ_social_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_social, measurevar = "SEQ_social_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Nonsocial context
+```{r}
+tab_nonsocial <- subset(tab, !is.na(SEQ_nonsocial_W0) & !is.na(SEQ_nonsocial_W16))
+
+descriptives(tab_nonsocial, SEQ_nonsocial_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_nonsocial, dv = 'SEQ_nonsocial_W16', between = "condition", covariate = c("SEQ_nonsocial_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_nonsocial, measurevar = "SEQ_nonsocial_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_nonsocial, measurevar = "SEQ_nonsocial_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+
+# Auditory
+```{r}
+tab_auditory <- subset(tab, !is.na(SEQ_auditory_W0) & !is.na(SEQ_auditory_W16))
+
+descriptives(tab_auditory, SEQ_auditory_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_auditory, dv = 'SEQ_auditory_W16', between = "condition", covariate = c("SEQ_auditory_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_auditory, measurevar = "SEQ_auditory_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_auditory, measurevar = "SEQ_auditory_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Visual
+```{r}
+tab_visual <- subset(tab, !is.na(SEQ_visual_W0) & !is.na(SEQ_visual_W16))
+
+descriptives(tab_visual, SEQ_visual_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_visual, dv = 'SEQ_visual_W16', between = "condition", covariate = c("SEQ_visual_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_visual, measurevar = "SEQ_visual_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_visual, measurevar = "SEQ_visual_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Tactile
+```{r}
+tab_tactile <- subset(tab, !is.na(SEQ_tactile_W0) & !is.na(SEQ_tactile_W16))
+
+descriptives(tab_tactile, SEQ_tactile_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_tactile, dv = 'SEQ_tactile_W16', between = "condition", covariate = c("SEQ_tactile_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_tactile, measurevar = "SEQ_tactile_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_tactile, measurevar = "SEQ_tactile_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+
+# Gustatory/Olfactory
+```{r}
+tab_gusta_olfac <- subset(tab, !is.na(SEQ_gusta_olfac_W0) & !is.na(SEQ_gusta_olfac_W16))
+
+descriptives(tab_gusta_olfac, SEQ_gusta_olfac_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_gusta_olfac, dv = 'SEQ_gusta_olfac_W16', between = "condition", covariate = c("SEQ_gusta_olfac_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_gusta_olfac, measurevar = "SEQ_gusta_olfac_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_gusta_olfac, measurevar = "SEQ_gusta_olfac_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+# Vestibular/Proprioception
+```{r}
+tab_ves_pro <- subset(tab, !is.na(SEQ_ves_pro_W0) & !is.na(SEQ_ves_pro_W16))
+
+descriptives(tab_ves_pro, SEQ_ves_pro_W16, splitBy = "condition", variance = TRUE, skew = TRUE, kurt = TRUE)
+afex::aov_ez(data = tab_ves_pro, dv = 'SEQ_ves_pro_W16', between = "condition", covariate = c("SEQ_ves_pro_W0", "age"), id = 'sub', factorize = F)
+
+Rmisc::summarySE(tab_ves_pro, measurevar = "SEQ_ves_pro_W0", groupvars = "condition", na.rm = TRUE)
+Rmisc::summarySE(tab_ves_pro, measurevar = "SEQ_ves_pro_W16", groupvars = "condition", na.rm = TRUE)
+```
+
+
+
+----------------------------------------
+Adverse events
+```{r}
+Rmisc::summarySE(tab, measurevar = "nbr_AE", groupvars = "condition", na.rm = TRUE)
+
+min(subset(tab, condition == "placebo")$nbr_AE)
+max(subset(tab, condition == "placebo")$nbr_AE)
+min(subset(tab, condition == "ARBA")$nbr_AE)
+max(subset(tab, condition == "ARBA")$nbr_AE)
+median(subset(tab, condition == "placebo")$nbr_AE, na.rm = TRUE)
+median(subset(tab, condition == "ARBA")$nbr_AE, na.rm = TRUE)
+```
+

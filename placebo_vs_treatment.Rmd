@@ -1,0 +1,1990 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Look for effect of different covariates on 2 groups separately
+
+
+```{r}
+library('dplyr')
+library('lme4')
+library('sjmisc')
+library("ggplot2")
+library('afex')
+library('jmv')
+library('emmeans')
+library('effectsize')
+library('rstatix')
+library('haven')
+library("readxl")
+library('expss')
+library('epiDisplay')
+library("writexl")
+```
+
+
+```{r}
+data <- read_excel("C:/Users/Admin/Desktop/ARBA/EEG behavioral measures/EEG_Beh_With_Adverse_Events+Dosing.xlsx")
+```
+
+```{r}
+
+tab <- data.frame(sub = data$sub, gender = factor(data$GENDER_STD), age = data$AGE, verbal_IQ = data$VERBAL_IQ, nonverbal_IQ = data$NON_VERBAL_IQ, IQ = data$FULL_SCALE_IQ, nbr_AE = data$nbr_AE, SR = data$`Sleep Related`,
+                        condition = data$cond,
+                        VABS3_COM_W0 = data$VABS3_COM_SS.0, delta_VABS3_COM = data$delta_VABS3_COM,
+                        VABS3_SOC_W0 = data$VABS3_SOC_SS.0, delta_VABS3_SOC = data$delta_VABS3_SOC,
+                        VABS3_IPR_GSV_W0 = data$VABS3_IPR_GSV.0, delta_VABS3_IPR_GSV = data$delta_VABS3_IPR_GSV,
+                        VABS3_PLA_GSV_W0 = data$VABS3_PLA_GSV.0, delta_VABS3_PLA_GSV = data$delta_VABS3_PLA_GSV,  
+                        VABS3_COP_GSV_W0 = data$VABS3_COP_GSV.0, delta_VABS3_COP_GSV = data$delta_VABS3_COP_GSV, 
+                        AIM_total_W0 = data$AIM_total.0, delta_AIM_total = data$delta_AIM_total,
+                        AIM_sums_W0 = data$AIM_sums.0, delta_AIM_sums = data$delta_AIM_sums,
+                        AIM_atypical_W0 = data$AIM_atypical.0, delta_AIM_atypical = data$delta_AIM_atypical,
+                        AIM_recip_W0 = data$AIM_reciprocity.0, delta_AIM_recip = data$delta_AIM_reciprocity,
+                        AIM_com_W0 = data$AIM_communication.0, delta_AIM_com = data$delta_AIM_communication,
+                        AIM_rep_beh_W0 = data$AIM_repetitive_behavior.0, delta_AIM_rep_beh = data$delta_AIM_repetitive_behavior,
+                        AIM_rep_lang_W0 = data$AIM_repetitive_language.0, delta_AIM_rep_lang = data$delta_AIM_repetitive_language,
+                        AIM_frequency_W0 = data$AIM_frequency.0, delta_AIM_freq = data$delta_AIM_frequency,
+                        AIM_impact_W0 = data$AIM_impact.0, delta_AIM_impact = data$delta_AIM_impact,
+                        ABC_hyper_W0 = data$ABC_hyperactivity.0, delta_ABC_hyper = data$delta_ABC_hyperactivity,
+                        ABC_irrit_W0 = data$ABC_irritability.0, delta_ABC_irrit = data$delta_ABC_irritability,
+                        ABC_ste_beh_W0 = data$ABC_stereotypic_behavior.0, delta_ABC_ste_beh = data$delta_ABC_stereotypic_behavior,
+                        ABC_inap_speech_W0 = data$ABC_inappropriate_speech.0, delta_ABC_inap_speech = data$delta_ABC_inappropriate_speech,
+                        ABC_soc_wit_W0 = data$ABC_social_withdrawal.0, delta_ABC_soc_wit = data$delta_ABC_social_withdrawal,
+                        ABC_lethargy_W0 = data$ABC_lethargy.0, delta_ABC_lethargy = data$delta_ABC_lethargy, 
+                        SEQ_total_W0 = data$SEQ_total.0, delta_SEQ_total = data$delta_SEQ_total,
+                        SEQ_HYPER_W0 = data$SEQ_response_pattern_HYPER.0, delta_SEQ_HYPER = data$delta_SEQ_response_pattern_HYPER,
+                        SEQ_HYPO_W0 = data$SEQ_response_pattern_HYPO.0, delta_SEQ_HYPO = data$delta_SEQ_response_pattern_HYPO,
+                        SEQ_SIRS_W0 = data$SEQ_response_pattern_SIRS.0, delta_SEQ_SIRS = data$delta_SEQ_response_pattern_SIRS,
+                        SEQ_EP_W0 = data$SEQ_response_pattern_EP.0,  delta_SEQ_EP = data$delta_SEQ_response_pattern_EP,
+                        SEQ_nonsocial_W0 = data$SEQ_context_nonsocial.0, delta_SEQ_nonsocial = data$delta_SEQ_context_nonsocial,
+                        SEQ_social_W0 = data$SEQ_context_social.0, delta_SEQ_social = data$delta_SEQ_context_social,
+                        SEQ_auditory_W0 = data$SEQ_sensory_modality_auditory.0, delta_SEQ_auditory = data$delta_SEQ_sensory_modality_auditory,
+                        SEQ_visual_W0 = data$SEQ_sensory_modality_visual.0, delta_SEQ_visual = data$delta_SEQ_sensory_modality_visual,
+                        SEQ_tactile_W0 = data$SEQ_sensory_modality_tactile.0, delta_SEQ_tactile = data$delta_SEQ_sensory_modality_tactile,  
+                        SEQ_gusta_olfac_W0 = data$SEQ_sensory_modality_gustatory_olfactory.0, delta_SEQ_gusta_olfac = data$delta_SEQ_sensory_modality_gustatory_olfactory, 
+                        SEQ_ves_pro_W0 = data$SEQ_sensory_modality_vestibular_proprioception.0, delta_SEQ_ves_pro = data$delta_SEQ_sensory_modality_vestibular_proprioception,
+                        VABS3_COM_W112 = data$VABS3_COM_SS.112, VABS3_SOC_W112 = data$VABS3_SOC_SS.112, VABS3_IPR_GSV_W112 = data$VABS3_IPR_GSV.112, 
+                        VABS3_PLA_GSV_W112 = data$VABS3_PLA_GSV.112, VABS3_COP_GSV_W112 = data$VABS3_COP_GSV.112,
+                        AIM_total_W112 = data$AIM_total.112,
+                        AIM_sums_W112 = data$AIM_sums.112, AIM_atypical_W112 = data$AIM_atypical.112, AIM_recip_W112 = data$AIM_reciprocity.112,
+                        AIM_com_W112 = data$AIM_communication.112,  AIM_rep_beh_W112 = data$AIM_repetitive_behavior.112, AIM_rep_lang_W112 = data$AIM_repetitive_language.112, 
+                        AIM_frequency_W112 = data$AIM_frequency.112, AIM_impact_W112 = data$AIM_impact.112, ABC_hyper_W112 = data$ABC_hyperactivity.112, 
+                        ABC_irrit_W112 = data$ABC_irritability.112,  ABC_ste_beh_W112 = data$ABC_stereotypic_behavior.112, ABC_inap_speech_W112 = data$ABC_inappropriate_speech.112, 
+                        ABC_soc_wit_W112 = data$ABC_social_withdrawal.112, ABC_lethargy_W112 = data$ABC_lethargy.112,  
+                        SEQ_total_W112 = data$SEQ_total.112, SEQ_HYPER_W112 = data$SEQ_response_pattern_HYPER.112, SEQ_HYPO_W112 = data$SEQ_response_pattern_HYPO.112, 
+                        SEQ_SIRS_W112 = data$SEQ_response_pattern_SIRS.112, SEQ_EP_W112 = data$SEQ_response_pattern_EP.112, SEQ_nonsocial_W112 = data$SEQ_context_nonsocial.112, 
+                        SEQ_social_W112 = data$SEQ_context_social.112, SEQ_auditory_W112 = data$SEQ_sensory_modality_auditory.112, SEQ_visual_W112 = data$SEQ_sensory_modality_visual.112, 
+                        SEQ_tactile_W112 = data$SEQ_sensory_modality_tactile.112, SEQ_gusta_olfac_W112 = data$SEQ_sensory_modality_gustatory_olfactory.112, 
+                        SEQ_ves_pro_W112 = data$SEQ_sensory_modality_vestibular_proprioception.112)
+```
+
+```{r}
+write_xlsx(tab,"delta.xlsx")
+```
+
+
+```{r}
+tab['condition'][tab['condition'] == "0"] <- "placebo"
+tab['condition'][tab['condition'] == "1"] <- "ARBA"
+tab
+```
+
+# Improvement scores (%)
+```{r}
+tab$imp_VABS3_COM <- tab$delta_VABS3_COM/tab$VABS3_COM_W0
+tab$imp_VABS3_SOC <- tab$delta_VABS3_SOC/tab$VABS3_SOC_W0
+tab$imp_VABS3_IPR <- tab$delta_VABS3_COM/tab$VABS3_IPR_GSV_W0
+tab$imp_VABS3_PLA <- tab$delta_VABS3_COM/tab$VABS3_PLA_GSV_W0
+tab$imp_VABS3_COP <- tab$delta_VABS3_COM/tab$VABS3_COP_GSV_W0
+
+#tab$mean_imp_VABS3 <- rowMeans(select (tab, c(imp_VABS3_COM, imp_VABS3_SOC)), na.rm = TRUE)
+```
+
+```{r}
+tab$imp_AIM_sums <- tab$delta_AIM_sums/tab$AIM_sums_W0
+tab$imp_AIM_atypical <- tab$delta_AIM_atypical/tab$AIM_atypical_W0
+tab$imp_AIM_reciprocity <- tab$delta_AIM_recip/tab$AIM_recip_W0
+tab$imp_AIM_com <- tab$delta_AIM_com/tab$AIM_com_W0
+tab$imp_AIM_rep_beh <- tab$delta_AIM_rep_beh/tab$AIM_rep_beh_W0
+tab$imp_AIM_rep_lang <- tab$delta_AIM_rep_lang/tab$AIM_rep_lang_W0
+tab$imp_AIM_freq <- tab$delta_AIM_freq/tab$AIM_frequency_W0
+tab$imp_AIM_impact <- tab$delta_AIM_impact/tab$AIM_impact_W0
+```
+
+```{r}
+tab$imp_ABC_hyper <- ifelse(tab$ABC_hyper_W0 == 0, NA,tab$delta_ABC_hyper/tab$ABC_hyper_W0)
+tab$imp_ABC_irrit <- ifelse(tab$ABC_irrit_W0 ==0, NA, tab$delta_ABC_irrit/tab$ABC_irrit_W0)
+tab$imp_ABC_ste_beh <- ifelse(tab$ABC_ste_beh_W0 == 0, NA, tab$delta_ABC_ste_beh/tab$ABC_ste_beh_W0)
+tab$imp_ABC_inap_speech <- ifelse(tab$ABC_inap_speech_W0 ==0, NA, tab$delta_ABC_inap_speech/tab$ABC_inap_speech_W0)
+tab$imp_ABC_soc_wit <- ifelse(tab$ABC_soc_wit_W0 ==0, NA, tab$delta_ABC_soc_wit/tab$ABC_soc_wit_W0)
+tab$imp_ABC_lethargy <- ifelse(tab$ABC_lethargy_W0 ==0, NA, tab$delta_ABC_lethargy/tab$ABC_lethargy_W0)
+```
+
+```{r}
+tab$imp_SEQ_total <- tab$delta_SEQ_total/tab$SEQ_total_W0
+tab$imp_SEQ_HYPER <- tab$delta_SEQ_HYPER/tab$SEQ_HYPER_W0
+tab$imp_SEQ_HYPO <- tab$delta_SEQ_HYPO/tab$SEQ_HYPO_W0
+tab$imp_SEQ_EP <- tab$delta_SEQ_EP/tab$SEQ_EP_W0
+tab$imp_SEQ_SIRS <- tab$delta_SEQ_SIRS/tab$SEQ_SIRS_W0
+tab$imp_SEQ_nonsocial <- tab$delta_SEQ_nonsocial/tab$SEQ_nonsocial_W0
+tab$imp_SEQ_social <- tab$delta_SEQ_social/tab$SEQ_social_W0
+tab$imp_SEQ_auditory <- tab$delta_SEQ_auditory/tab$SEQ_auditory_W0
+tab$imp_SEQ_visual <- tab$delta_SEQ_visual/tab$SEQ_visual_W0
+tab$imp_SEQ_tactile <- tab$delta_SEQ_tactile/tab$SEQ_tactile_W0
+tab$imp_SEQ_gusta_olfac <- tab$delta_SEQ_gusta_olfac/tab$SEQ_gusta_olfac_W0
+tab$imp_SEQ_ves_pro <- tab$delta_SEQ_ves_pro/tab$SEQ_ves_pro_W0
+```
+
+
+
+# Check normality of distributions of post-pré scores (delta)
+= OK
+```{r}
+jmv::descriptives(tab, vars(delta_AIM_atypical, delta_AIM_recip, delta_AIM_com, delta_AIM_rep_beh), skew = T, kurt = T, median = F)
+```
+
+
+
+# Forming the groups with the RCI method
+## Vineland 3
+```{r}
+# Vineland 2 : 0.83 - 0.94
+# Vineland 3 : 0.64 - 0.94
+sd_VABS3_COM_0 = sd(tab$VABS3_COM_W0)
+sd_VABS3_SOC_0 = sd(tab$VABS3_SOC_W0)
+sd_VABS3_IPR_0 = sd(tab$VABS3_IPR_W0)
+sd_VABS3_PLA_0 = sd(tab$VABS3_PLA_W0)
+sd_VABS3_COP_0 = sd(tab$VABS3_COP_W0)
+
+sd_VABS3_COM_112 = sd(tab$VABS3_COM_W112)
+sd_VABS3_SOC_112 = sd(tab$VABS3_SOC_W112)
+sd_VABS3_IPR_112 = sd(tab$VABS3_IPR_W112)
+sd_VABS3_PLA_112 = sd(tab$VABS3_PLA_W112)
+sd_VABS3_COP_112 = sd(tab$VABS3_COP_W112)
+```
+
+## AIM
+Peux pas trouver/déduire/calculer les coeff test-retest de freq et impact pour le moment donc peux pas les faire --> moyenne des 2 coeff
+Repetitive language est pas là non plus
+
+```{r}
+# SEM 1
+SEM_atypical_0 = sd(tab$AIM_atypical_W0)*sqrt(1-0.655)
+SEM_recip_0 = sd(tab$AIM_recip_W0)*sqrt(1-0.66)
+SEM_com_0 = sd(tab$AIM_com_W0)*sqrt(1-0.815)
+SEM_rep_beh_0 = sd(tab$AIM_rep_beh_W0)*sqrt(1-0.80)
+SEM_rep_lang_0 = sd(tab$AIM_rep_lang_W0)*sqrt(1-65.5)
+
+# SEM 2
+SEM_atypical_112 = sd(tab$AIM_atypical_W112, na.rm = TRUE)*sqrt(1-0.655)
+SEM_recip_112 = sd(tab$AIM_recip_W112, na.rm = TRUE)*sqrt(1-0.66)
+SEM_com_112 = sd(tab$AIM_com_W112, na.rm = TRUE)*sqrt(1-0.815)
+SEM_rep_beh_112 = sd(tab$AIM_rep_beh_W112, na.rm = TRUE)*sqrt(1-0.80)
+SEM_rep_lang_112 = sd(tab$AIM_rep_lang_W112, na.rm = TRUE)*sqrt(1-65.5)
+
+# SE diff
+SE_atypical = sqrt((SEM_atypical_0^2)+(SEM_atypical_112^2))
+SE_recip = sqrt((SEM_recip_0^2)+(SEM_recip_112^2))
+SE_com = sqrt((SEM_com_0^2)+(SEM_com_112^2))
+SE_rep_beh = sqrt((SEM_rep_beh_0^2)+(SEM_rep_beh_112^2))
+
+#For each patient and each outcome measure, the difference in scores between assessments (post-treatment score minus pre-treatment score) was compared to this cutoff and classified as declined, stable or improved. 
+
+# 90% confidence interval (CI)
+
+# AIM atypical
+CI_atypical = SE_atypical* 1.64 # 11.51
+tab$response_AIM_atypical <- ifelse(tab$delta_AIM_atypical >= CI_atypical, "improvement", "stable")
+tab$response_AIM_atypical <- ifelse(tab$delta_AIM_atypical <= -CI_atypical, "decline", tab$response_AIM_atypical)
+sjmisc::frq(tab$response_AIM_atypical)
+
+# AIM recip
+CI_recip = SE_recip* 1.64 # 13.07
+tab$response_AIM_recip <- ifelse(tab$delta_AIM_recip >= CI_recip, "improvement", "stable")
+tab$response_AIM_recip <- ifelse(tab$delta_AIM_recip <= -CI_recip, "decline", tab$response_AIM_recip)
+sjmisc::frq(tab$response_AIM_recip)
+
+#AIM com 
+CI_com = SE_com* 1.64 # 6.07
+tab$response_AIM_com <- ifelse(tab$delta_AIM_com >= CI_com, "improvement", 0)
+tab$response_AIM_com <- ifelse(abs(tab$delta_AIM_com) < CI_com, "stable", tab$response_AIM_com)
+tab$response_AIM_com <- ifelse(tab$delta_AIM_com <= -CI_com, "decline", tab$response_AIM_com)
+sjmisc::frq(tab$response_AIM_com)
+
+# AIM repetitive behavior
+CI_rep_beh = SE_rep_beh* 1.64 # 15.23
+tab$response_AIM_rep_beh <- ifelse(tab$delta_AIM_rep_beh >= CI_rep_beh, "improvement", 0)
+tab$response_AIM_rep_beh <- ifelse(abs(tab$delta_AIM_rep_beh) < CI_rep_beh, "stable", tab$response_AIM_rep_beh)
+tab$response_AIM_rep_beh <- ifelse(tab$delta_AIM_rep_beh <= -CI_rep_beh, "decline", tab$response_AIM_rep_beh)
+sjmisc::frq(tab$response_AIM_rep_beh)
+```
+
+# ABC
+total = 0.83
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4749683/
+```{r}
+# SEM 1
+SEM_hyper_0 = sd(tab$ABC_hyper_W0, na.rm = TRUE)*sqrt(1-0.83)
+SEM_irrit_0 = sd(tab$ABC_irrit_W0, na.rm = TRUE)*sqrt(1-0.83)
+SEM_ste_beh_0 = sd(tab$ABC_ste_beh_W0, na.rm = TRUE)*sqrt(1-0.83)
+SEM_inap_speech_0 = sd(tab$ABC_inap_speech_W0, na.rm = TRUE)*sqrt(1-0.83)
+SEM_soc_wit_0 = sd(tab$ABC_soc_wit_W0, na.rm = TRUE)*sqrt(1-0.83)
+SEM_lethargy_0 = sd(tab$ABC_lethargy_W0, na.rm = TRUE)*sqrt(1-0.83)
+
+# SEM 2
+SEM_hyper_112 = sd(tab$ABC_hyper_W112, na.rm = TRUE)*sqrt(1-0.83)
+SEM_irrit_112 = sd(tab$ABC_irrit_W112, na.rm = TRUE)*sqrt(1-0.83)
+SEM_ste_beh_112 = sd(tab$ABC_ste_beh_W112, na.rm = TRUE)*sqrt(1-0.83)
+SEM_inap_speech_112 = sd(tab$ABC_inap_speech_W112, na.rm = TRUE)*sqrt(1-0.83)
+SEM_soc_wit_112 = sd(tab$ABC_soc_wit_W112, na.rm = TRUE)*sqrt(1-0.83)
+SEM_lethargy_112 = sd(tab$ABC_lethargy_W112, na.rm = TRUE)*sqrt(1-0.83)
+
+# SEdiff
+SE_hyper = sqrt((SEM_hyper_0^2)+(SEM_hyper_112^2))
+SE_irrit = sqrt((SEM_irrit_0^2)+(SEM_irrit_112^2))
+SE_ste_beh = sqrt((SEM_ste_beh_0^2)+(SEM_ste_beh_112^2))
+SE_inap_speech = sqrt((SEM_inap_speech_0^2)+(SEM_inap_speech_112^2))
+SE_soc_wit = sqrt((SEM_soc_wit_0^2)+(SEM_soc_wit_112^2))
+SE_lethargy = sqrt((SEM_lethargy_0^2)+(SEM_lethargy_112^2))
+
+# ABC hyper
+CI_hyper = SE_hyper* 1.64
+tab$response_ABC_hyper <- ifelse(tab$delta_ABC_hyper >= CI_com, "improvement", 0)
+tab$response_ABC_hyper <- ifelse(abs(tab$delta_ABC_hyper) < CI_com, "stable", tab$response_ABC_hyper)
+tab$response_ABC_hyper <- ifelse(tab$delta_ABC_hyper <= -CI_com, "decline", tab$response_ABC_hyper)
+sjmisc::frq(tab$response_ABC_hyper)
+
+# ABC irrit
+CI_irrit = SE_irrit* 1.64
+tab$response_ABC_irrit <- ifelse(tab$delta_ABC_irrit >= CI_com, "improvement", 0)
+tab$response_ABC_irrit <- ifelse(abs(tab$delta_ABC_irrit) < CI_com, "stable", tab$response_ABC_irrit)
+tab$response_ABC_irrit <- ifelse(tab$delta_ABC_irrit <= -CI_com, "decline", tab$response_ABC_irrit)
+sjmisc::frq(tab$response_ABC_irrit)
+
+# ABC ste_beh
+CI_ste_beh = SE_ste_beh* 1.64
+tab$response_ABC_ste_beh <- ifelse(tab$delta_ABC_ste_beh >= CI_com, "improvement", 0)
+tab$response_ABC_ste_beh <- ifelse(abs(tab$delta_ABC_ste_beh) < CI_com, "stable", tab$response_ABC_ste_beh)
+tab$response_ABC_ste_beh <- ifelse(tab$delta_ABC_ste_beh <= -CI_com, "decline", tab$response_ABC_ste_beh)
+sjmisc::frq(tab$response_ABC_ste_beh)
+
+# ABC inap_speech
+CI_inap_speech = SE_inap_speech* 1.64
+tab$response_ABC_inap_speech <- ifelse(tab$delta_ABC_inap_speech >= CI_com, "improvement", 0)
+tab$response_ABC_inap_speech <- ifelse(abs(tab$delta_ABC_inap_speech) < CI_com, "stable", tab$response_ABC_inap_speech)
+tab$response_ABC_inap_speech <- ifelse(tab$delta_ABC_inap_speech <= -CI_com, "decline", tab$response_ABC_inap_speech)
+sjmisc::frq(tab$response_ABC_inap_speech)
+
+# ABC soc_wit
+CI_soc_wit = SE_soc_wit* 1.64
+tab$response_ABC_soc_wit <- ifelse(tab$delta_ABC_soc_wit >= CI_com, "improvement", 0)
+tab$response_ABC_soc_wit <- ifelse(abs(tab$delta_ABC_soc_wit) < CI_com, "stable", tab$response_ABC_soc_wit)
+tab$response_ABC_soc_wit <- ifelse(tab$delta_ABC_soc_wit <= -CI_com, "decline", tab$response_ABC_soc_wit)
+sjmisc::frq(tab$response_ABC_soc_wit)
+
+# ABC lethargy
+CI_lethargy = SE_lethargy* 1.64
+tab$response_ABC_lethargy <- ifelse(tab$delta_ABC_lethargy >= CI_com, "improvement", 0)
+tab$response_ABC_lethargy <- ifelse(abs(tab$delta_ABC_lethargy) < CI_com, "stable", tab$response_ABC_lethargy)
+tab$response_ABC_lethargy <- ifelse(tab$delta_ABC_lethargy <= -CI_com, "decline", tab$response_ABC_lethargy)
+sjmisc::frq(tab$response_ABC_lethargy)
+```
+
+# SEQ
+0.92 (VERSION 1 *****)
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3163482/
+```{r}
+# SEM 1
+SEM_total_0 = sd(tab$SEQ_total_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_HYPER_0 = sd(tab$SEQ_HYPER_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_HYPO_0 = sd(tab$SEQ_HYPO_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_SIRS_0 = sd(tab$SEQ_SIRS_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_EP_0 = sd(tab$SEQ_EP_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_nonsocial_0 = sd(tab$SEQ_nonsocial_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_social_0 = sd(tab$SEQ_social_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_auditory_0 = sd(tab$SEQ_auditory_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_visual_0 = sd(tab$SEQ_visual_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_tactile_0 = sd(tab$SEQ_tactile_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_gusta_olfac_0 = sd(tab$SEQ_gusta_olfac_W0, na.rm = TRUE)*sqrt(1-0.92)
+SEM_ves_pro_0 = sd(tab$SEQ_ves_pro_W0, na.rm = TRUE)*sqrt(1-0.92)
+
+# SEM 2
+SEM_total_112 = sd(tab$SEQ_total_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_HYPER_112 = sd(tab$SEQ_HYPER_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_HYPO_112 = sd(tab$SEQ_HYPO_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_SIRS_112 = sd(tab$SEQ_SIRS_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_EP_112 = sd(tab$SEQ_EP_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_nonsocial_112 = sd(tab$SEQ_nonsocial_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_social_112 = sd(tab$SEQ_social_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_auditory_112 = sd(tab$SEQ_auditory_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_visual_112 = sd(tab$SEQ_visual_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_tactile_112 = sd(tab$SEQ_tactile_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_gusta_olfac_112 = sd(tab$SEQ_gusta_olfac_W112, na.rm = TRUE)*sqrt(1-0.92)
+SEM_ves_pro_112 = sd(tab$SEQ_ves_pro_W112, na.rm = TRUE)*sqrt(1-0.92)
+
+# SEdiff
+SE_total = sqrt((SEM_total_0^2)+(SEM_total_112^2))
+SE_HYPER = sqrt((SEM_HYPER_0^2)+(SEM_HYPER_112^2))
+SE_HYPO = sqrt((SEM_HYPO_0^2)+(SEM_HYPO_112^2))
+SE_SIRS = sqrt((SEM_SIRS_0^2)+(SEM_SIRS_112^2))
+SE_EP = sqrt((SEM_EP_0^2)+(SEM_EP_112^2))
+SE_nonsocial = sqrt((SEM_nonsocial_0^2)+(SEM_nonsocial_112^2))
+SE_social = sqrt((SEM_social_0^2)+(SEM_social_112^2))
+SE_auditory = sqrt((SEM_auditory_0^2)+(SEM_auditory_112^2))
+SE_visual = sqrt((SEM_visual_0^2)+(SEM_visual_112^2))
+SE_tactile = sqrt((SEM_tactile_0^2)+(SEM_tactile_112^2))
+SE_gusta_olfac = sqrt((SEM_gusta_olfac_0^2)+(SEM_gusta_olfac_112^2))
+SE_ves_pro = sqrt((SEM_ves_pro_0^2)+(SEM_ves_pro_112^2))
+
+# SEQ total
+CI_total = SE_total* 1.64
+tab$response_SEQ_total <- ifelse(tab$delta_SEQ_total >= CI_com, "improvement", 0)
+tab$response_SEQ_total <- ifelse(abs(tab$delta_SEQ_total) < CI_com, "stable", tab$response_SEQ_total)
+tab$response_SEQ_total <- ifelse(tab$delta_SEQ_total <= -CI_com, "decline", tab$response_SEQ_total)
+sjmisc::frq(tab$response_SEQ_total)
+# SEQ HYPER
+CI_HYPER = SE_HYPER* 1.64
+tab$response_SEQ_HYPER <- ifelse(tab$delta_SEQ_HYPER >= CI_com, "improvement", 0)
+tab$response_SEQ_HYPER <- ifelse(abs(tab$delta_SEQ_HYPER) < CI_com, "stable", tab$response_SEQ_HYPER)
+tab$response_SEQ_HYPER <- ifelse(tab$delta_SEQ_HYPER <= -CI_com, "decline", tab$response_SEQ_HYPER)
+sjmisc::frq(tab$response_SEQ_HYPER)
+# SEQ HYPO
+CI_HYPO = SE_HYPO* 1.64
+tab$response_SEQ_HYPO <- ifelse(tab$delta_SEQ_HYPO >= CI_com, "improvement", 0)
+tab$response_SEQ_HYPO <- ifelse(abs(tab$delta_SEQ_HYPO) < CI_com, "stable", tab$response_SEQ_HYPO)
+tab$response_SEQ_HYPO <- ifelse(tab$delta_SEQ_HYPO <= -CI_com, "decline", tab$response_SEQ_HYPO)
+sjmisc::frq(tab$response_SEQ_HYPO)
+# SEQ SIRS
+CI_SIRS = SE_SIRS* 1.64
+tab$response_SEQ_SIRS <- ifelse(tab$delta_SEQ_SIRS >= CI_com, "improvement", 0)
+tab$response_SEQ_SIRS <- ifelse(abs(tab$delta_SEQ_SIRS) < CI_com, "stable", tab$response_SEQ_SIRS)
+tab$response_SEQ_SIRS <- ifelse(tab$delta_SEQ_SIRS <= -CI_com, "decline", tab$response_SEQ_SIRS)
+sjmisc::frq(tab$response_SEQ_SIRS)
+# SEQ EP
+CI_EP = SE_EP* 1.64
+tab$response_SEQ_EP <- ifelse(tab$delta_SEQ_EP >= CI_com, "improvement", 0)
+tab$response_SEQ_EP <- ifelse(abs(tab$delta_SEQ_EP) < CI_com, "stable", tab$response_SEQ_EP)
+tab$response_SEQ_EP <- ifelse(tab$delta_SEQ_EP <= -CI_com, "decline", tab$response_SEQ_EP)
+sjmisc::frq(tab$response_SEQ_EP)
+# SEQ nonsocial
+CI_nonsocial = SE_nonsocial* 1.64
+tab$response_SEQ_nonsocial <- ifelse(tab$delta_SEQ_nonsocial >= CI_com, "improvement", 0)
+tab$response_SEQ_nonsocial <- ifelse(abs(tab$delta_SEQ_nonsocial) < CI_com, "stable", tab$response_SEQ_nonsocial)
+tab$response_SEQ_nonsocial <- ifelse(tab$delta_SEQ_nonsocial <= -CI_com, "decline", tab$response_SEQ_nonsocial)
+sjmisc::frq(tab$response_SEQ_nonsocial)
+# SEQ social
+CI_social = SE_social* 1.64
+tab$response_SEQ_social <- ifelse(tab$delta_SEQ_social >= CI_com, "improvement", 0)
+tab$response_SEQ_social <- ifelse(abs(tab$delta_SEQ_social) < CI_com, "stable", tab$response_SEQ_social)
+tab$response_SEQ_social <- ifelse(tab$delta_SEQ_social <= -CI_com, "decline", tab$response_SEQ_social)
+sjmisc::frq(tab$response_SEQ_social)
+# SEQ auditory
+CI_auditory = SE_auditory* 1.64
+tab$response_SEQ_auditory <- ifelse(tab$delta_SEQ_auditory >= CI_com, "improvement", 0)
+tab$response_SEQ_auditory <- ifelse(abs(tab$delta_SEQ_auditory) < CI_com, "stable", tab$response_SEQ_auditory)
+tab$response_SEQ_auditory <- ifelse(tab$delta_SEQ_auditory <= -CI_com, "decline", tab$response_SEQ_auditory)
+sjmisc::frq(tab$response_SEQ_auditory)
+# SEQ visual
+CI_visual = SE_visual* 1.64
+tab$response_SEQ_visual <- ifelse(tab$delta_SEQ_visual >= CI_com, "improvement", 0)
+tab$response_SEQ_visual <- ifelse(abs(tab$delta_SEQ_visual) < CI_com, "stable", tab$response_SEQ_visual)
+tab$response_SEQ_visual <- ifelse(tab$delta_SEQ_visual <= -CI_com, "decline", tab$response_SEQ_visual)
+sjmisc::frq(tab$response_SEQ_visual)
+# SEQ tactile
+CI_tactile = SE_tactile* 1.64
+tab$response_SEQ_tactile <- ifelse(tab$delta_SEQ_tactile >= CI_com, "improvement", 0)
+tab$response_SEQ_tactile <- ifelse(abs(tab$delta_SEQ_tactile) < CI_com, "stable", tab$response_SEQ_tactile)
+tab$response_SEQ_tactile <- ifelse(tab$delta_SEQ_tactile <= -CI_com, "decline", tab$response_SEQ_tactile)
+sjmisc::frq(tab$response_SEQ_tactile)
+# SEQ gusta_olfac
+CI_gusta_olfac = SE_gusta_olfac* 1.64
+tab$response_SEQ_gusta_olfac <- ifelse(tab$delta_SEQ_gusta_olfac >= CI_com, "improvement", 0)
+tab$response_SEQ_gusta_olfac <- ifelse(abs(tab$delta_SEQ_gusta_olfac) < CI_com, "stable", tab$response_SEQ_gusta_olfac)
+tab$response_SEQ_gusta_olfac <- ifelse(tab$delta_SEQ_gusta_olfac <= -CI_com, "decline", tab$response_SEQ_gusta_olfac)
+sjmisc::frq(tab$response_SEQ_gusta_olfac)
+# SEQ ves_pro
+CI_ves_pro = SE_ves_pro* 1.64
+tab$response_SEQ_ves_pro <- ifelse(tab$delta_SEQ_ves_pro >= CI_com, "improvement", 0)
+tab$response_SEQ_ves_pro <- ifelse(abs(tab$delta_SEQ_ves_pro) < CI_com, "stable", tab$response_SEQ_ves_pro)
+tab$response_SEQ_ves_pro <- ifelse(tab$delta_SEQ_ves_pro <= -CI_com, "decline", tab$response_SEQ_ves_pro)
+sjmisc::frq(tab$response_SEQ_ves_pro)
+```
+# ANALYSES
+
+```{r}
+table(tab$condition, tab$response_AIM_atypical, useNA = "always")
+19/(1+9+19)
+table(tab$condition, tab$response_AIM_recip, useNA = "always")
+table(tab$condition, tab$response_AIM_com, useNA = "always")
+table(tab$condition, tab$response_AIM_rep_beh, useNA = "always")
+```
+
+
+```{r}
+table(tab$condition, tab$response_ABC_hyper, useNA = "always")
+table(tab$condition, tab$response_ABC_irrit, useNA = "always")
+table(tab$condition, tab$response_ABC_ste_beh, useNA = "always")
+table(tab$condition, tab$response_ABC_inap_speech, useNA = "always")
+table(tab$condition, tab$response_ABC_soc_wit, useNA = "always")
+6/(2+10+18)
+table(tab$condition, tab$response_ABC_lethargy, useNA = "always")
+```
+
+
+```{r}
+table(tab$condition, tab$response_SEQ_HYPER, useNA = "always")
+table(tab$condition, tab$response_SEQ_HYPO, useNA = "always")
+table(tab$condition, tab$response_SEQ_SIRS, useNA = "always")
+table(tab$condition, tab$response_SEQ_EP, useNA = "always")
+table(tab$condition, tab$response_SEQ_social, useNA = "always")
+table(tab$condition, tab$response_SEQ_nonsocial, useNA = "always")
+table(tab$condition, tab$response_SEQ_auditory, useNA = "always")
+table(tab$condition, tab$response_SEQ_visual, useNA = "always")
+table(tab$condition, tab$response_SEQ_tactile, useNA = "always")
+table(tab$condition, tab$response_SEQ_gusta_olfac, useNA = "always")
+table(tab$condition, tab$response_SEQ_ves_pro, useNA = "always")
+table(tab$condition, tab$response_SEQ_total, useNA = "always")
+```
+
+
+```{r}
+# Placebo
+mytable_AIM_atypical_p <- table(subset(tab, condition == "placebo")$response_AIM_atypical)
+lbls <- paste(names(mytable_AIM_atypical_p), "\n", mytable_AIM_atypical_p, sep="")
+pie(mytable_AIM_atypical_p, labels = lbls,
+   main="AIM - Atypical behaviour : placebo", col = rainbow(length(mytable_AIM_atypical_p)))
+
+
+# ARBA
+mytable_AIM_atypical_A <- table(subset(tab, condition == "ARBA")$response_AIM_atypical)
+lbls <- paste(names(mytable_AIM_atypical_A), "\n", mytable_AIM_atypical_A, sep="")
+pie(mytable_AIM_atypical_A, labels = lbls,
+   main="AIM - Atypical behaviour : ARBA", col = rainbow(length(mytable_AIM_atypical_A)))
+```
+
+---------------------------------------------------
+# CORRÉLATIONS
+
+## AIM atypical behaviour
+```{r}
+cor.test(tab$AIM_atypical_W0, tab$delta_AIM_atypical)
+cor.test(tab$age, tab$delta_AIM_atypical)
+cor.test(tab$verbal_IQ, tab$delta_AIM_atypical)
+cor.test(tab$nonverbal_IQ, tab$delta_AIM_atypical)
+cor.test(tab$IQ, tab$delta_AIM_atypical)
+cor.test(tab$nbr_AE, tab$delta_AIM_atypical)
+
+tab_arba <- subset(tab, condition == "ARBA")
+cor.test(tab_arba$AIM_atypical_W0, tab_arba$delta_AIM_atypical)
+cor.test(tab_arba$age, tab_arba$delta_AIM_atypical)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_AIM_atypical)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_AIM_atypical)
+cor.test(tab_arba$IQ, tab_arba$delta_AIM_atypical)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_AIM_atypical)
+
+
+tab_placebo <- subset(tab, condition == "placebo")
+cor.test(tab_placebo$AIM_atypical_W0, tab_placebo$delta_AIM_atypical)
+cor.test(tab_placebo$age, tab_placebo$delta_AIM_atypical)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_AIM_atypical)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_AIM_atypical)
+cor.test(tab_placebo$IQ, tab_placebo$delta_AIM_atypical)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_AIM_atypical)
+
+ggplot(tab, aes(x = nbr_AE, y = delta_AIM_atypical)) +
+  geom_point(size = 3, alpha = .8) + 
+  geom_smooth(method = "lm", se = FALSE, size = 1) +
+  geom_smooth(method = "lm", size = 1, colour = 'black', se = F) +
+  theme_bw()
+```
+
+## AIM reciprocity
+```{r}
+cor.test(tab$AIM_recip_W0, tab$delta_AIM_recip)
+cor.test(tab$age, tab$delta_AIM_recip)
+cor.test(tab$verbal_IQ, tab$delta_AIM_recip)
+cor.test(tab$nonverbal_IQ, tab$delta_AIM_recip)
+cor.test(tab$IQ, tab$delta_AIM_recip)
+cor.test(tab$nbr_AE, tab$delta_AIM_recip)
+
+cor.test(tab_arba$AIM_recip_W0, tab_arba$delta_AIM_recip)
+cor.test(tab_arba$age, tab_arba$delta_AIM_recip)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_AIM_recip)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_AIM_recip)
+cor.test(tab_arba$IQ, tab_arba$delta_AIM_recip)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_AIM_recip)
+
+
+cor.test(tab_placebo$AIM_recip_W0, tab_placebo$delta_AIM_recip)
+cor.test(tab_placebo$age, tab_placebo$delta_AIM_recip)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_AIM_recip)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_AIM_recip)
+cor.test(tab_placebo$IQ, tab_placebo$delta_AIM_recip)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_AIM_recip)
+```
+
+## AIM communication
+```{r}
+cor.test(tab$AIM_com_W0, tab$delta_AIM_com)
+cor.test(tab$age, tab$delta_AIM_com)
+cor.test(tab$verbal_IQ, tab$delta_AIM_com)
+cor.test(tab$nonverbal_IQ, tab$delta_AIM_com)
+cor.test(tab$IQ, tab$delta_AIM_com)
+cor.test(tab$nbr_AE, tab$delta_AIM_com)
+
+cor.test(tab_arba$AIM_com_W0, tab_arba$delta_AIM_com)
+cor.test(tab_arba$age, tab_arba$delta_AIM_com)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_AIM_com)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_AIM_com)
+cor.test(tab_arba$IQ, tab_arba$delta_AIM_com)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_AIM_com)
+
+
+cor.test(tab_placebo$AIM_com_W0, tab_placebo$delta_AIM_com)
+cor.test(tab_placebo$age, tab_placebo$delta_AIM_com)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_AIM_com)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_AIM_com)
+cor.test(tab_placebo$IQ, tab_placebo$delta_AIM_com)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_AIM_com)
+
+
+ggplot(tab_placebo, aes(x = nonverbal_IQ, y = delta_AIM_com)) +
+  geom_point(size = 3, alpha = .8) + 
+  geom_smooth(method = "lm", se = FALSE, size = 1) +
+  geom_smooth(method = "lm", size = 1, colour = 'black', se = F) +
+  theme_bw()
+```
+
+## AIM repetitive behaviour
+```{r}
+cor.test(tab$AIM_rep_beh_W0, tab$delta_AIM_rep_beh)
+cor.test(tab$age, tab$delta_AIM_rep_beh)
+cor.test(tab$verbal_IQ, tab$delta_AIM_rep_beh)
+cor.test(tab$nonverbal_IQ, tab$delta_AIM_rep_beh)
+cor.test(tab$IQ, tab$delta_AIM_rep_beh)
+cor.test(tab$nbr_AE, tab$delta_AIM_rep_beh)
+
+
+tab_arba <- subset(tab, condition == "ARBA")
+cor.test(tab_arba$AIM_rep_beh_W0, tab_arba$delta_AIM_rep_beh)
+cor.test(tab_arba$age, tab_arba$delta_AIM_rep_beh)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_AIM_rep_beh)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_AIM_rep_beh)
+cor.test(tab_arba$IQ, tab_arba$delta_AIM_rep_beh)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_AIM_rep_beh)
+
+
+tab_placebo <- subset(tab, condition == "placebo")
+cor.test(tab_placebo$AIM_rep_beh_W0, tab_placebo$delta_AIM_rep_beh)
+cor.test(tab_placebo$age, tab_placebo$delta_AIM_rep_beh)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_AIM_rep_beh)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_AIM_rep_beh)
+cor.test(tab_placebo$IQ, tab_placebo$delta_AIM_rep_beh)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_AIM_rep_beh)
+
+
+ggplot(tab, aes(x = AIM_rep_beh_W0, y = delta_AIM_rep_beh)) +
+  geom_point(aes(colour = condition), size = 3, alpha = .8) + 
+  geom_smooth(method = "lm", se = FALSE, size = 1, 
+              aes(linetype = condition, group = condition)) +
+  geom_smooth(method = "lm", size = 1, colour = 'black', se = F) +
+  theme_bw()
+
+
+ggplot(tab, aes(x = nbr_AE, y = delta_AIM_rep_beh)) +
+  geom_point(size = 3, alpha = .8) + 
+  geom_smooth(method = "lm", se = FALSE, size = 1) +
+  geom_smooth(method = "lm", size = 1, colour = 'black', se = F) +
+  theme_bw()
+```
+
+## AIM repetitive language
+```{r}
+cor.test(tab$AIM_rep_lang_W0, tab$delta_AIM_rep_lang)
+cor.test(tab$age, tab$delta_AIM_rep_lang)
+cor.test(tab$verbal_IQ, tab$delta_AIM_rep_lang)
+cor.test(tab$nonverbal_IQ, tab$delta_AIM_rep_lang)
+cor.test(tab$IQ, tab$delta_AIM_rep_lang)
+cor.test(tab$nbr_AE, tab$delta_AIM_rep_lang)
+
+
+cor.test(tab_arba$AIM_rep_lang_W0, tab_arba$delta_AIM_rep_lang)
+cor.test(tab_arba$age, tab_arba$delta_AIM_rep_lang)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_AIM_rep_lang)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_AIM_rep_lang)
+cor.test(tab_arba$IQ, tab_arba$delta_AIM_rep_lang)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_AIM_rep_lang)
+
+
+cor.test(tab_placebo$AIM_rep_lang_W0, tab_placebo$delta_AIM_rep_lang)
+cor.test(tab_placebo$age, tab_placebo$delta_AIM_rep_lang)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_AIM_rep_lang)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_AIM_rep_lang)
+cor.test(tab_placebo$IQ, tab_placebo$delta_AIM_rep_lang)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_AIM_rep_lang)
+```
+## AIM total
+```{r}
+cor.test(tab$AIM_total_W0, tab$delta_AIM_total)
+cor.test(tab$age, tab$delta_AIM_total)
+cor.test(tab$verbal_IQ, tab$delta_AIM_total)
+cor.test(tab$nonverbal_IQ, tab$delta_AIM_total)
+cor.test(tab$IQ, tab$delta_AIM_total)
+cor.test(tab$nbr_AE, tab$delta_AIM_total)
+
+cor.test(tab_arba$AIM_total_W0, tab_arba$delta_AIM_total)
+cor.test(tab_arba$age, tab_arba$delta_AIM_total)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_AIM_total)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_AIM_total)
+cor.test(tab_arba$IQ, tab_arba$delta_AIM_total)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_AIM_total)
+
+cor.test(tab_placebo$AIM_total_W0, tab_placebo$delta_AIM_total)
+cor.test(tab_placebo$age, tab_placebo$delta_AIM_total)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_AIM_total)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_AIM_total)
+cor.test(tab_placebo$IQ, tab_placebo$delta_AIM_total)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_AIM_total)
+```
+
+
+## VABS3 communication
+```{r}
+cor.test(tab$VABS3_COM_W0, tab$delta_VABS3_COM)
+cor.test(tab$age, tab$delta_VABS3_COM)
+cor.test(tab$verbal_IQ, tab$delta_VABS3_COM)
+cor.test(tab$nonverbal_IQ, tab$delta_VABS3_COM)
+cor.test(tab$IQ, tab$delta_VABS3_COM)
+cor.test(tab$nbr_AE, tab$delta_VABS3_COM)
+
+cor.test(tab_arba$VABS3_COM_W0, tab_arba$delta_VABS3_COM)
+cor.test(tab_arba$age, tab_arba$delta_VABS3_COM)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_VABS3_COM)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_VABS3_COM)
+cor.test(tab_arba$IQ, tab_arba$delta_VABS3_COM)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_VABS3_COM)
+
+cor.test(tab_placebo$VABS3_COM_W0, tab_placebo$delta_VABS3_COM)
+cor.test(tab_placebo$age, tab_placebo$delta_VABS3_COM)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_VABS3_COM)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_VABS3_COM)
+cor.test(tab_placebo$IQ, tab_placebo$delta_VABS3_COM)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_VABS3_COM)
+```
+
+```{r}
+cor.test(tab$VABS3_SOC_W0, tab$delta_VABS3_SOC)
+cor.test(tab$age, tab$delta_VABS3_SOC)
+cor.test(tab$verbal_IQ, tab$delta_VABS3_SOC)
+cor.test(tab$nonverbal_IQ, tab$delta_VABS3_SOC)
+cor.test(tab$IQ, tab$delta_VABS3_SOC)
+cor.test(tab$nbr_AE, tab$delta_VABS3_SOC)
+
+cor.test(tab_arba$VABS3_SOC_W0, tab_arba$delta_VABS3_SOC)
+cor.test(tab_arba$age, tab_arba$delta_VABS3_SOC)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_VABS3_SOC)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_VABS3_SOC)
+cor.test(tab_arba$IQ, tab_arba$delta_VABS3_SOC)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_VABS3_SOC)
+
+cor.test(tab_placebo$VABS3_SOC_W0, tab_placebo$delta_VABS3_SOC)
+cor.test(tab_placebo$age, tab_placebo$delta_VABS3_SOC)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_VABS3_SOC)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_VABS3_SOC)
+cor.test(tab_placebo$IQ, tab_placebo$delta_VABS3_SOC)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_VABS3_SOC)
+
+ggplot(tab_placebo, aes(x = age, y = delta_VABS3_SOC)) +
+  geom_point(size = 3, alpha = .8) + 
+  geom_smooth(method = "lm", se = FALSE, size = 1) +
+  geom_smooth(method = "lm", size = 1, colour = 'black', se = F) +
+  theme_bw()
+```
+
+```{r}
+cor.test(tab$VABS3_IPR_GSV_W0, tab$delta_VABS3_IPR_GSV)
+cor.test(tab$age, tab$delta_VABS3_IPR_GSV)
+cor.test(tab$verbal_IQ, tab$delta_VABS3_IPR_GSV)
+cor.test(tab$nonverbal_IQ, tab$delta_VABS3_IPR_GSV)
+cor.test(tab$IQ, tab$delta_VABS3_IPR_GSV)
+cor.test(tab$nbr_AE, tab$delta_VABS3_IPR_GSV)
+
+cor.test(tab_arba$VABS3_IPR_GSV_W0, tab_arba$delta_VABS3_IPR_GSV)
+cor.test(tab_arba$age, tab_arba$delta_VABS3_IPR_GSV)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_VABS3_IPR_GSV)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_VABS3_IPR_GSV)
+cor.test(tab_arba$IQ, tab_arba$delta_VABS3_IPR_GSV)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_VABS3_IPR_GSV)
+
+cor.test(tab_placebo$VABS3_IPR_GSV_W0, tab_placebo$delta_VABS3_IPR_GSV)
+cor.test(tab_placebo$age, tab_placebo$delta_VABS3_IPR_GSV)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_VABS3_IPR_GSV)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_VABS3_IPR_GSV)
+cor.test(tab_placebo$IQ, tab_placebo$delta_VABS3_IPR_GSV)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_VABS3_IPR_GSV)
+```
+
+
+```{r}
+cor.test(tab$VABS3_PLA_GSV_W0, tab$delta_VABS3_PLA_GSV)
+cor.test(tab$age, tab$delta_VABS3_PLA_GSV)
+cor.test(tab$verbal_IQ, tab$delta_VABS3_PLA_GSV)
+cor.test(tab$nonverbal_IQ, tab$delta_VABS3_PLA_GSV)
+cor.test(tab$IQ, tab$delta_VABS3_PLA_GSV)
+cor.test(tab$nbr_AE, tab$delta_VABS3_PLA_GSV)
+
+tab_arba <- subset(tab, condition == "ARBA")
+cor.test(tab_arba$VABS3_PLA_GSV_W0, tab_arba$delta_VABS3_PLA_GSV)
+cor.test(tab_arba$age, tab_arba$delta_VABS3_PLA_GSV)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_VABS3_PLA_GSV)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_VABS3_PLA_GSV)
+cor.test(tab_arba$IQ, tab_arba$delta_VABS3_PLA_GSV)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_VABS3_PLA_GSV)
+
+tab_placebo <- subset(tab, condition == "placebo")
+cor.test(tab_placebo$VABS3_PLA_GSV_W0, tab_placebo$delta_VABS3_PLA_GSV)
+cor.test(tab_placebo$age, tab_placebo$delta_VABS3_PLA_GSV)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_VABS3_PLA_GSV)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_VABS3_PLA_GSV)
+cor.test(tab_placebo$IQ, tab_placebo$delta_VABS3_PLA_GSV)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_VABS3_PLA_GSV)
+```
+
+
+```{r}
+cor.test(tab$VABS3_COP_GSV_W0, tab$delta_VABS3_COP_GSV)
+cor.test(tab$age, tab$delta_VABS3_COP_GSV)
+cor.test(tab$verbal_IQ, tab$delta_VABS3_COP_GSV)
+cor.test(tab$nonverbal_IQ, tab$delta_VABS3_COP_GSV)
+cor.test(tab$IQ, tab$delta_VABS3_COP_GSV)
+cor.test(tab$nbr_AE, tab$delta_VABS3_COP_GSV)
+
+cor.test(tab_arba$VABS3_COP_GSV_W0, tab_arba$delta_VABS3_COP_GSV)
+cor.test(tab_arba$age, tab_arba$delta_VABS3_COP_GSV)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_VABS3_COP_GSV)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_VABS3_COP_GSV)
+cor.test(tab_arba$IQ, tab_arba$delta_VABS3_COP_GSV)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_VABS3_COP_GSV)
+
+cor.test(tab_placebo$VABS3_COP_GSV_W0, tab_placebo$delta_VABS3_COP_GSV)
+cor.test(tab_placebo$age, tab_placebo$delta_VABS3_COP_GSV)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_VABS3_COP_GSV)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_VABS3_COP_GSV)
+cor.test(tab_placebo$IQ, tab_placebo$delta_VABS3_COP_GSV)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_VABS3_COP_GSV)
+```
+
+## ABC irritability
+```{r}
+cor.test(tab$ABC_irrit_W0, tab$delta_ABC_irrit)
+cor.test(tab$age, tab$delta_ABC_irrit)
+cor.test(tab$verbal_IQ, tab$delta_ABC_irrit)
+cor.test(tab$nonverbal_IQ, tab$delta_ABC_irrit)
+cor.test(tab$IQ, tab$delta_ABC_irrit)
+cor.test(tab$nbr_AE, tab$delta_ABC_irrit)
+
+cor.test(tab_arba$ABC_irrit_W0, tab_arba$delta_ABC_irrit)
+cor.test(tab_arba$age, tab_arba$delta_ABC_irrit)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_ABC_irrit)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_ABC_irrit)
+cor.test(tab_arba$IQ, tab_arba$delta_ABC_irrit)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_ABC_irrit)
+
+cor.test(tab_placebo$ABC_irrit_W0, tab_placebo$delta_ABC_irrit)
+cor.test(tab_placebo$age, tab_placebo$delta_ABC_irrit)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_ABC_irrit)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_ABC_irrit)
+cor.test(tab_placebo$IQ, tab_placebo$delta_ABC_irrit)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_ABC_irrit)
+```
+
+## ABC ste beh
+```{r}
+cor.test(tab$ABC_ste_beh_W0, tab$delta_ABC_ste_beh)
+cor.test(tab$age, tab$delta_ABC_ste_beh)
+cor.test(tab$verbal_IQ, tab$delta_ABC_ste_beh)
+cor.test(tab$nonverbal_IQ, tab$delta_ABC_ste_beh)
+cor.test(tab$IQ, tab$delta_ABC_ste_beh)
+cor.test(tab$nbr_AE, tab$delta_ABC_ste_beh)
+
+cor.test(tab_arba$ABC_ste_beh_W0, tab_arba$delta_ABC_ste_beh)
+cor.test(tab_arba$age, tab_arba$delta_ABC_ste_beh)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_ABC_ste_beh)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_ABC_ste_beh)
+cor.test(tab_arba$IQ, tab_arba$delta_ABC_ste_beh)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_ABC_ste_beh)
+
+cor.test(tab_placebo$ABC_ste_beh_W0, tab_placebo$delta_ABC_ste_beh)
+cor.test(tab_placebo$age, tab_placebo$delta_ABC_ste_beh)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_ABC_ste_beh)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_ABC_ste_beh)
+cor.test(tab_placebo$IQ, tab_placebo$delta_ABC_ste_beh)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_ABC_ste_beh)
+```
+
+## ABC hyperactivity/noncompliance
+```{r}
+cor.test(tab$ABC_hyper_W0, tab$delta_ABC_hyper)
+cor.test(tab$age, tab$delta_ABC_hyper)
+cor.test(tab$verbal_IQ, tab$delta_ABC_hyper)
+cor.test(tab$nonverbal_IQ, tab$delta_ABC_hyper)
+cor.test(tab$IQ, tab$delta_ABC_hyper)
+cor.test(tab$nbr_AE, tab$delta_ABC_hyper)
+
+cor.test(tab_arba$ABC_hyper_W0, tab_arba$delta_ABC_hyper)
+cor.test(tab_arba$age, tab_arba$delta_ABC_hyper)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_ABC_hyper)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_ABC_hyper)
+cor.test(tab_arba$IQ, tab_arba$delta_ABC_hyper)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_ABC_hyper)
+
+cor.test(tab_placebo$ABC_hyper_W0, tab_placebo$delta_ABC_hyper)
+cor.test(tab_placebo$age, tab_placebo$delta_ABC_hyper)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_ABC_hyper)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_ABC_hyper)
+cor.test(tab_placebo$IQ, tab_placebo$delta_ABC_hyper)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_ABC_hyper)
+```
+
+# ABC inappropriate speech
+```{r}
+cor.test(tab$ABC_inap_speech_W0, tab$delta_ABC_inap_speech)
+cor.test(tab$age, tab$delta_ABC_inap_speech)
+cor.test(tab$verbal_IQ, tab$delta_ABC_inap_speech)
+cor.test(tab$nonverbal_IQ, tab$delta_ABC_inap_speech)
+cor.test(tab$IQ, tab$delta_ABC_inap_speech)
+cor.test(tab$nbr_AE, tab$delta_ABC_inap_speech)
+
+cor.test(tab_arba$ABC_inap_speech_W0, tab_arba$delta_ABC_inap_speech)
+cor.test(tab_arba$age, tab_arba$delta_ABC_inap_speech)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_ABC_inap_speech)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_ABC_inap_speech)
+cor.test(tab_arba$IQ, tab_arba$delta_ABC_inap_speech)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_ABC_inap_speech)
+
+cor.test(tab_placebo$ABC_inap_speech_W0, tab_placebo$delta_ABC_inap_speech)
+cor.test(tab_placebo$age, tab_placebo$delta_ABC_inap_speech)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_ABC_inap_speech)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_ABC_inap_speech)
+cor.test(tab_placebo$IQ, tab_placebo$delta_ABC_inap_speech)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_ABC_inap_speech)
+```
+
+## ABC lethargy
+```{r}
+cor.test(tab$ABC_lethargy_W0, tab$delta_ABC_lethargy)
+cor.test(tab$age, tab$delta_ABC_lethargy)
+cor.test(tab$verbal_IQ, tab$delta_ABC_lethargy)
+cor.test(tab$nonverbal_IQ, tab$delta_ABC_lethargy)
+cor.test(tab$IQ, tab$delta_ABC_lethargy)
+cor.test(tab$nbr_AE, tab$delta_ABC_lethargy)
+
+cor.test(tab_arba$ABC_lethargy_W0, tab_arba$delta_ABC_lethargy)
+cor.test(tab_arba$age, tab_arba$delta_ABC_lethargy)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_ABC_lethargy)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_ABC_lethargy)
+cor.test(tab_arba$IQ, tab_arba$delta_ABC_lethargy)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_ABC_lethargy)
+
+cor.test(tab_placebo$ABC_lethargy_W0, tab_placebo$delta_ABC_lethargy)
+cor.test(tab_placebo$age, tab_placebo$delta_ABC_lethargy)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_ABC_lethargy)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_ABC_lethargy)
+cor.test(tab_placebo$IQ, tab_placebo$delta_ABC_lethargy)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_ABC_lethargy)
+```
+
+## ABC social withdrawal
+```{r}
+cor.test(tab$ABC_soc_wit_W0, tab$delta_ABC_soc_wit)
+cor.test(tab$age, tab$delta_ABC_soc_wit)
+cor.test(tab$verbal_IQ, tab$delta_ABC_soc_wit)
+cor.test(tab$nonverbal_IQ, tab$delta_ABC_soc_wit)
+cor.test(tab$IQ, tab$delta_ABC_soc_wit)
+cor.test(tab$nbr_AE, tab$delta_ABC_soc_wit)
+
+cor.test(tab_arba$ABC_soc_wit_W0, tab_arba$delta_ABC_soc_wit)
+cor.test(tab_arba$age, tab_arba$delta_ABC_soc_wit)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_ABC_soc_wit)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_ABC_soc_wit)
+cor.test(tab_arba$IQ, tab_arba$delta_ABC_soc_wit)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_ABC_soc_wit)
+
+cor.test(tab_placebo$ABC_soc_wit_W0, tab_placebo$delta_ABC_soc_wit)
+cor.test(tab_placebo$age, tab_placebo$delta_ABC_soc_wit)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_ABC_soc_wit)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_ABC_soc_wit)
+cor.test(tab_placebo$IQ, tab_placebo$delta_ABC_soc_wit)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_ABC_soc_wit)
+```
+
+SEQ hyperresponsiveness
+```{r}
+cor.test(tab$SEQ_HYPER_W0, tab$delta_SEQ_HYPER)
+cor.test(tab$age, tab$delta_SEQ_HYPER)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_HYPER)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_HYPER)
+cor.test(tab$IQ, tab$delta_SEQ_HYPER)
+cor.test(tab$nbr_AE, tab$delta_SEQ_HYPER)
+
+cor.test(tab_arba$SEQ_HYPER_W0, tab_arba$delta_SEQ_HYPER)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_HYPER)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_HYPER)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_HYPER)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_HYPER)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_HYPER)
+
+cor.test(tab_placebo$SEQ_HYPER_W0, tab_placebo$delta_SEQ_HYPER)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_HYPER)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_HYPER)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_HYPER)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_HYPER)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_HYPER)
+```
+
+SEQ hyporresponsiveness
+```{r}
+cor.test(tab$SEQ_HYPO_W0, tab$delta_SEQ_HYPO)
+cor.test(tab$age, tab$delta_SEQ_HYPO)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_HYPO)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_HYPO)
+cor.test(tab$IQ, tab$delta_SEQ_HYPO)
+cor.test(tab$nbr_AE, tab$delta_SEQ_HYPO)
+
+cor.test(tab_arba$SEQ_HYPO_W0, tab_arba$delta_SEQ_HYPO)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_HYPO)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_HYPO)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_HYPO)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_HYPO)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_HYPO)
+
+cor.test(tab_placebo$SEQ_HYPO_W0, tab_placebo$delta_SEQ_HYPO)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_HYPO)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_HYPO)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_HYPO)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_HYPO)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_HYPO)
+```
+
+SEQ SIRS
+```{r}
+cor.test(tab$SEQ_SIRS_W0, tab$delta_SEQ_SIRS)
+cor.test(tab$age, tab$delta_SEQ_SIRS)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_SIRS)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_SIRS)
+cor.test(tab$IQ, tab$delta_SEQ_SIRS)
+cor.test(tab$nbr_AE, tab$delta_SEQ_SIRS)
+
+cor.test(tab_arba$SEQ_SIRS_W0, tab_arba$delta_SEQ_SIRS)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_SIRS)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_SIRS)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_SIRS)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_SIRS)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_SIRS)
+
+cor.test(tab_placebo$SEQ_SIRS_W0, tab_placebo$delta_SEQ_SIRS)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_SIRS)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_SIRS)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_SIRS)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_SIRS)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_SIRS)
+```
+SEQ Enhanced perception
+```{r}
+cor.test(tab$SEQ_EP_W0, tab$delta_SEQ_EP)
+cor.test(tab$age, tab$delta_SEQ_EP)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_EP)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_EP)
+cor.test(tab$IQ, tab$delta_SEQ_EP)
+cor.test(tab$nbr_AE, tab$delta_SEQ_EP)
+
+cor.test(tab_arba$SEQ_EP_W0, tab_arba$delta_SEQ_EP)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_EP)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_EP)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_EP)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_EP)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_EP)
+
+cor.test(tab_placebo$SEQ_EP_W0, tab_placebo$delta_SEQ_EP)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_EP)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_EP)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_EP)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_EP)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_EP)
+```
+
+
+SEQ social context
+```{r}
+cor.test(tab$SEQ_social_W0, tab$delta_SEQ_social)
+cor.test(tab$age, tab$delta_SEQ_social)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_social)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_social)
+cor.test(tab$IQ, tab$delta_SEQ_social)
+cor.test(tab$nbr_AE, tab$delta_SEQ_social)
+
+cor.test(tab_arba$SEQ_social_W0, tab_arba$delta_SEQ_social)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_social)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_social)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_social)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_social)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_social)
+
+cor.test(tab_placebo$SEQ_social_W0, tab_placebo$delta_SEQ_social)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_social)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_social)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_social)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_social)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_social)
+```
+
+SEQ non-social context
+```{r}
+cor.test(tab$SEQ_nonsocial_W0, tab$delta_SEQ_nonsocial)
+cor.test(tab$age, tab$delta_SEQ_nonsocial)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_nonsocial)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_nonsocial)
+cor.test(tab$IQ, tab$delta_SEQ_nonsocial)
+cor.test(tab$nbr_AE, tab$delta_SEQ_nonsocial)
+
+cor.test(tab_arba$SEQ_nonsocial_W0, tab_arba$delta_SEQ_nonsocial)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_nonsocial)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_nonsocial)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_nonsocial)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_nonsocial)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_nonsocial)
+
+cor.test(tab_placebo$SEQ_nonsocial_W0, tab_placebo$delta_SEQ_nonsocial)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_nonsocial)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_nonsocial)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_nonsocial)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_nonsocial)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_nonsocial)
+```
+
+SEQ auditory
+```{r}
+cor.test(tab$SEQ_auditory_W0, tab$delta_SEQ_auditory)
+cor.test(tab$age, tab$delta_SEQ_auditory)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_auditory)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_auditory)
+cor.test(tab$IQ, tab$delta_SEQ_auditory)
+cor.test(tab$nbr_AE, tab$delta_SEQ_auditory)
+
+cor.test(tab_arba$SEQ_auditory_W0, tab_arba$delta_SEQ_auditory)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_auditory)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_auditory)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_auditory)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_auditory)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_auditory)
+
+cor.test(tab_placebo$SEQ_auditory_W0, tab_placebo$delta_SEQ_auditory)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_auditory)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_auditory)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_auditory)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_auditory)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_auditory)
+```
+
+SEQ visual
+```{r}
+cor.test(tab$SEQ_visual_W0, tab$delta_SEQ_visual)
+cor.test(tab$age, tab$delta_SEQ_visual)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_visual)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_visual)
+cor.test(tab$IQ, tab$delta_SEQ_visual)
+cor.test(tab$nbr_AE, tab$delta_SEQ_visual)
+
+cor.test(tab_arba$SEQ_visual_W0, tab_arba$delta_SEQ_visual)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_visual)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_visual)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_visual)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_visual)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_visual)
+
+cor.test(tab_placebo$SEQ_visual_W0, tab_placebo$delta_SEQ_visual)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_visual)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_visual)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_visual)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_visual)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_visual)
+```
+
+SEQ Tactile
+```{r}
+cor.test(tab$SEQ_tactile_W0, tab$delta_SEQ_tactile)
+cor.test(tab$age, tab$delta_SEQ_tactile)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_tactile)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_tactile)
+cor.test(tab$IQ, tab$delta_SEQ_tactile)
+cor.test(tab$nbr_AE, tab$delta_SEQ_tactile)
+
+cor.test(tab_arba$SEQ_tactile_W0, tab_arba$delta_SEQ_tactile)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_tactile)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_tactile)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_tactile)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_tactile)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_tactile)
+
+cor.test(tab_placebo$SEQ_tactile_W0, tab_placebo$delta_SEQ_tactile)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_tactile)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_tactile)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_tactile)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_tactile)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_tactile)
+```
+
+SEQ Gustatory-Olfactory
+```{r}
+cor.test(tab$SEQ_gusta_olfac_W0, tab$delta_SEQ_gusta_olfac)
+cor.test(tab$age, tab$delta_SEQ_gusta_olfac)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_gusta_olfac)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_gusta_olfac)
+cor.test(tab$IQ, tab$delta_SEQ_gusta_olfac)
+cor.test(tab$nbr_AE, tab$delta_SEQ_gusta_olfac)
+
+cor.test(tab_arba$SEQ_gusta_olfac_W0, tab_arba$delta_SEQ_gusta_olfac)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_gusta_olfac)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_gusta_olfac)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_gusta_olfac)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_gusta_olfac)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_gusta_olfac)
+
+cor.test(tab_placebo$SEQ_gusta_olfac_W0, tab_placebo$delta_SEQ_gusta_olfac)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_gusta_olfac)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_gusta_olfac)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_gusta_olfac)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_gusta_olfac)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_gusta_olfac)
+```
+
+SEQ Vestibular-Proprioception
+```{r}
+cor.test(tab$SEQ_ves_pro_W0, tab$delta_SEQ_ves_pro)
+cor.test(tab$age, tab$delta_SEQ_ves_pro)
+cor.test(tab$verbal_IQ, tab$delta_SEQ_ves_pro)
+cor.test(tab$nonverbal_IQ, tab$delta_SEQ_ves_pro)
+cor.test(tab$IQ, tab$delta_SEQ_ves_pro)
+cor.test(tab$nbr_AE, tab$delta_SEQ_ves_pro)
+
+cor.test(tab_arba$SEQ_ves_pro_W0, tab_arba$delta_SEQ_ves_pro)
+cor.test(tab_arba$age, tab_arba$delta_SEQ_ves_pro)
+cor.test(tab_arba$verbal_IQ, tab_arba$delta_SEQ_ves_pro)
+cor.test(tab_arba$nonverbal_IQ, tab_arba$delta_SEQ_ves_pro)
+cor.test(tab_arba$IQ, tab_arba$delta_SEQ_ves_pro)
+cor.test(tab_arba$nbr_AE, tab_arba$delta_SEQ_ves_pro)
+
+cor.test(tab_placebo$SEQ_ves_pro_W0, tab_placebo$delta_SEQ_ves_pro)
+cor.test(tab_placebo$age, tab_placebo$delta_SEQ_ves_pro)
+cor.test(tab_placebo$verbal_IQ, tab_placebo$delta_SEQ_ves_pro)
+cor.test(tab_placebo$nonverbal_IQ, tab_placebo$delta_SEQ_ves_pro)
+cor.test(tab_placebo$IQ, tab_placebo$delta_SEQ_ves_pro)
+cor.test(tab_placebo$nbr_AE, tab_placebo$delta_SEQ_ves_pro)
+```
+
+---------------------------------------------------
+# ANOVAS FACTORIELLES
+## AIM
+### AIM atypical
+Trop peu de participants dans le groupe decline donc comparer juste improvement VS stable
+```{r}
+tab_atypical = subset(tab, response_AIM_atypical == "improvement" | response_AIM_atypical == "stable")
+
+jmv::descriptives(tab_atypical, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_AIM_atypical, condition))
+
+# Age
+afex::aov_ez(data = tab_atypical, dv = 'age', between = c('condition', 'response_AIM_atypical'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_atypical, dv = 'IQ', between = c('condition', 'response_AIM_atypical'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_atypical, dv = 'verbal_IQ', between = c('condition', 'response_AIM_atypical'), id = 'sub', type = 2)
+
+# Non verbal IQ
+anv <- afex::aov_ez(data = tab_atypical, dv = 'nonverbal_IQ', between = c('condition', 'response_AIM_atypical'), id = 'sub', type = 2) # Interaction
+anv
+means<- emmeans(anv,~ condition | response_AIM_atypical)
+pairs(means) # nothing sig
+Rmisc::summarySE(tab_atypical, measurevar = "nonverbal_IQ", groupvars = c('condition', 'response_AIM_atypical'))
+
+# Nbr adverse events
+afex::aov_ez(data = tab_atypical, dv = 'nbr_AE', between = c('condition', 'response_AIM_atypical'), id = 'sub', type = 2)
+
+# Sleep related or not
+afex::aov_ez(data = tab_atypical, dv = 'nonverbal_IQ', between = c('condition', 'response_AIM_atypical'), id = 'sub', type = 2)
+
+# Atypical W0
+afex::aov_ez(data = tab_atypical, dv = 'AIM_atypical_W0', between = c('condition', 'response_AIM_atypical'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_atypical, measurevar = "AIM_atypical_W0", groupvars = "response_AIM_atypical")
+Rmisc::summarySE(tab_atypical, measurevar = "AIM_atypical_W0", groupvars = "condition")
+```
+
+### AIM reciprocity
+decline : N = 5
+improvement : N = 6
+--> trop peu
+Normalité OK
+Hétérogénéité OK
+```{r}
+tab_recip = subset(tab, response_AIM_recip == "improvement" | response_AIM_recip == "stable")
+
+jmv::descriptives(tab_recip, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE, AIM_recip_W0), skew = T, kurt = T, median = F, splitBy=c(response_AIM_recip, condition))
+
+# Age
+afex::aov_ez(data = tab_recip, dv = 'age', between = c('condition', 'response_AIM_recip'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_recip, dv = 'IQ', between = c('condition', 'response_AIM_recip'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_recip, dv = 'verbal_IQ', between = c('condition', 'response_AIM_recip'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_recip, dv = 'nonverbal_IQ', between = c('condition', 'response_AIM_recip'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_recip, dv = 'nbr_AE', between = c('condition', 'response_AIM_recip'), id = 'sub', type = 2)
+
+# reciprocity baseline
+afex::aov_ez(data = tab_recip, dv = 'AIM_recip_W0', between = c('condition', 'response_AIM_recip'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_recip, measurevar = "AIM_recip_W0", groupvars = "response_AIM_recip")
+
+```
+
+
+### AIM com
+decline : N = 3 --> trop peu
+Interaction !
+
+Normality OK
+Heterogeneity : Not OK for age in factorial ANOVA --> Wilcox
+```{r}
+tab_com = subset(tab, response_AIM_com == "improvement" | response_AIM_com == "stable")
+
+jmv::descriptives(tab_com, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_AIM_com, condition))
+
+# Age
+anv <- afex::aov_ez(data = tab_com, dv = 'age', between = c('condition', 'response_AIM_com'), id = 'sub', type = 2)
+anv
+means <- emmeans(anv,~ condition | response_AIM_com)
+pairs(means)
+Rmisc::summarySE(tab_com, measurevar = "age", groupvars = c("response_AIM_com", "condition"))
+
+# IQ
+afex::aov_ez(data = tab_com, dv = 'IQ', between = c('condition', 'response_AIM_com'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_com, dv = 'verbal_IQ', between = c('condition', 'response_AIM_com'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_com, dv = 'nonverbal_IQ', between = c('condition', 'response_AIM_com'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_com, dv = 'nbr_AE', between = c('condition', 'response_AIM_com'), id = 'sub', type = 2)
+
+# Com W0
+afex::aov_ez(data = tab_com, dv = 'AIM_com_W0', between = c('condition', 'response_AIM_com'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_com, measurevar = "AIM_com_W0", groupvars = c("response_AIM_com"))
+```
+
+### AIM rep_beh
+decline : N = 1 --> trop peu
+```{r}
+tab_rep_beh = subset(tab, response_AIM_rep_beh == "improvement" | response_AIM_rep_beh == "stable")
+
+jmv::descriptives(tab_rep_beh, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE, AIM_rep_beh_W0), skew = T, kurt = T, median = F, splitBy=c(response_AIM_rep_beh, condition))
+
+# Age
+afex::aov_ez(data = tab_rep_beh, dv = 'age', between = c('condition', 'response_AIM_rep_beh'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_rep_beh, dv = 'IQ', between = c('condition', 'response_AIM_rep_beh'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_rep_beh, dv = 'verbal_IQ', between = c('condition', 'response_AIM_rep_beh'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_rep_beh, dv = 'nonverbal_IQ', between = c('condition', 'response_AIM_rep_beh'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_rep_beh, dv = 'nbr_AE', between = c('condition', 'response_AIM_rep_beh'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_rep_beh, measurevar = "nbr_AE", groupvars = c("condition"))
+Rmisc::summarySE(tab_rep_beh, measurevar = "nbr_AE", groupvars = c("response_AIM_rep_beh"))
+
+# Repetitive behavior W0
+afex::aov_ez(data = tab_rep_beh, dv = 'AIM_rep_beh_W0', between = c('condition', 'response_AIM_rep_beh'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_rep_beh, measurevar = "AIM_rep_beh_W0", groupvars = c("response_AIM_rep_beh"))
+```
+
+
+
+## ABC
+### ABC hyper
+decline : N = 7
+```{r}
+tab_hyper = subset(tab, response_ABC_hyper == "improvement" | response_ABC_hyper == "stable")
+
+jmv::descriptives(tab_hyper, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_ABC_hyper, condition))
+
+# Age
+anv <- afex::aov_ez(data = tab_hyper, dv = 'age', between = c('condition', 'response_ABC_hyper'), id = 'sub', type = 2) # Interaction !
+anv
+means<- emmeans(anv,~ condition | response_ABC_hyper)
+pairs(means)
+Rmisc::summarySE(tab_hyper, measurevar = "age", groupvars = c("response_ABC_hyper", "condition"))
+
+
+# IQ
+afex::aov_ez(data = tab_hyper, dv = 'IQ', between = c('condition', 'response_ABC_hyper'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_hyper, dv = 'verbal_IQ', between = c('condition', 'response_ABC_hyper'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_hyper, dv = 'nonverbal_IQ', between = c('condition', 'response_ABC_hyper'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_hyper, dv = 'nbr_AE', between = c('condition', 'response_ABC_hyper'), id = 'sub', type = 2) # SIG !
+Rmisc::summarySE(tab_hyper, measurevar = "nbr_AE", groupvars = "response_ABC_hyper")
+Rmisc::summarySE(tab_hyper, measurevar = "nbr_AE", groupvars = "condition")
+
+# hyper W0
+anv <- afex::aov_ez(data = tab_hyper, dv = 'ABC_hyper_W0', between = c('condition', 'response_ABC_hyper'), id = 'sub', type = 2) # interaction
+anv
+means<- emmeans(anv,~ response_ABC_hyper | condition)
+pairs(means)
+Rmisc::summarySE(tab_hyper, measurevar = "nbr_AE", groupvars = c("response_ABC_hyper", "condition"))
+
+```
+
+### ABC irrit
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_irrit = subset(tab, response_ABC_irrit == "improvement" | response_ABC_irrit == "stable")
+
+jmv::descriptives(tab_irrit, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_ABC_irrit, condition))
+
+# Age
+afex::aov_ez(data = tab_irrit, dv = 'age', between = c('condition', 'response_ABC_irrit'), id = 'sub', type = 2)
+
+
+# IQ
+afex::aov_ez(data = tab_irrit, dv = 'IQ', between = c('condition', 'response_ABC_irrit'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_irrit, dv = 'verbal_IQ', between = c('condition', 'response_ABC_irrit'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_irrit, dv = 'nonverbal_IQ', between = c('condition', 'response_ABC_irrit'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_irrit, dv = 'nbr_AE', between = c('condition', 'response_ABC_irrit'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_irrit, measurevar = "nbr_AE", groupvars = "response_ABC_irrit")
+
+
+# irrit W0
+anv <- afex::aov_ez(data = tab_irrit, dv = 'ABC_irrit_W0', between = c('condition', 'response_ABC_irrit'), id = 'sub', type = 2)
+anv
+Rmisc::summarySE(tab_irrit, measurevar = "nbr_AE", groupvars = c("response_ABC_irrit"))
+```
+### ABC ste_beh
+```{r}
+#tab_ste_beh = subset(tab, response_ABC_ste_beh == "improvement" | response_ABC_ste_beh == "stable")
+
+jmv::descriptives(tab, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE, ABC_ste_beh_W0), skew = T, kurt = T, median = F, splitBy=c(response_ABC_ste_beh, condition))
+
+# Age
+afex::aov_ez(data = tab, dv = 'age', between = c('condition', 'response_ABC_ste_beh'), id = 'sub', type = 2)
+
+# IQ
+anv <- afex::aov_ez(data = tab, dv = 'IQ', between = c('condition', 'response_ABC_ste_beh'), id = 'sub', type = 2)
+anv
+means<- emmeans(anv,~ condition | response_ABC_ste_beh)
+pairs(means)
+Rmisc::summarySE(tab, measurevar = "IQ", groupvars = c("response_ABC_ste_beh", "condition"))
+
+# Verbal IQ
+anv <- afex::aov_ez(data = tab, dv = 'verbal_IQ', between = c('condition', 'response_ABC_ste_beh'), id = 'sub', type = 2)
+anv
+means<- emmeans(anv,~ condition | response_ABC_ste_beh)
+pairs(means)
+Rmisc::summarySE(tab, measurevar = "verbal_IQ", groupvars = c("response_ABC_ste_beh", "condition"))
+
+# Non verbal IQ
+anv <- afex::aov_ez(data = tab, dv = 'nonverbal_IQ', between = c('condition', 'response_ABC_ste_beh'), id = 'sub', type = 2)
+anv
+means<- emmeans(anv,~ response_ABC_ste_beh | condition)
+pairs(means)
+Rmisc::summarySE(tab, measurevar = "nonverbal_IQ", groupvars = c("response_ABC_ste_beh", "condition"))
+
+# Nbr adverse events
+afex::aov_ez(data = tab, dv = 'nbr_AE', between = c('condition', 'response_ABC_ste_beh'), id = 'sub', type = 2)
+
+
+# ste_beh W0
+anv <- afex::aov_ez(data = tab, dv = 'ABC_ste_beh_W0', between = c('condition', 'response_ABC_ste_beh'), id = 'sub', type = 2)
+anv
+Rmisc::summarySE(tab, measurevar = "ABC_ste_beh_W0", groupvars = c("condition"))
+means<- emmeans(anv,~ response_ABC_ste_beh)
+pairs(means, adjust = "bonf")
+Rmisc::summarySE(tab, measurevar = "ABC_ste_beh_W0", groupvars = c("response_ABC_ste_beh"))
+```
+
+### ABC inappropriate speech
+decline : N trop petit
+improvemnt ARBA aussi mais pas vrm le choix de le laisser
+Norm et hetero --> OK
+```{r}
+tab_inap_speech = subset(tab, response_ABC_inap_speech == "improvement" | response_ABC_inap_speech == "stable")
+
+jmv::descriptives(tab_inap_speech, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_ABC_inap_speech, condition))
+
+# Age
+afex::aov_ez(data = tab_inap_speech, dv = 'age', between = c('condition', 'response_ABC_inap_speech'), id = 'sub', type = 2)
+
+
+# IQ
+afex::aov_ez(data = tab_inap_speech, dv = 'IQ', between = c('condition', 'response_ABC_inap_speech'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_inap_speech, dv = 'verbal_IQ', between = c('condition', 'response_ABC_inap_speech'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_inap_speech, dv = 'nonverbal_IQ', between = c('condition', 'response_ABC_inap_speech'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_inap_speech, dv = 'nbr_AE', between = c('condition', 'response_ABC_inap_speech'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_inap_speech, measurevar = "nbr_AE", groupvars = "response_ABC_inap_speech")
+
+
+# inap_speech W0
+afex::aov_ez(data = tab_inap_speech, dv = 'ABC_inap_speech_W0', between = c('condition', 'response_ABC_inap_speech'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_inap_speech, measurevar = "ABC_inap_speech_W0", groupvars = "response_ABC_inap_speech")
+```
+
+
+
+### ABC social withdrawal
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_soc_wit = subset(tab, response_ABC_soc_wit == "improvement" | response_ABC_soc_wit == "stable")
+
+jmv::descriptives(tab_soc_wit, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_ABC_soc_wit, condition))
+
+# Age
+anv <- afex::aov_ez(data = tab_soc_wit, dv = 'age', between = c('condition', 'response_ABC_soc_wit'), id = 'sub', type = 2)
+anv
+means<- emmeans(anv,~ response_ABC_soc_wit | condition)
+pairs(means)
+Rmisc::summarySE(tab_soc_wit, measurevar = "age", groupvars = c("response_ABC_soc_wit", "condition"))
+
+
+# IQ
+afex::aov_ez(data = tab_soc_wit, dv = 'IQ', between = c('condition', 'response_ABC_soc_wit'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_soc_wit, dv = 'verbal_IQ', between = c('condition', 'response_ABC_soc_wit'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_soc_wit, dv = 'nonverbal_IQ', between = c('condition', 'response_ABC_soc_wit'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_soc_wit, dv = 'nbr_AE', between = c('condition', 'response_ABC_soc_wit'), id = 'sub', type = 2)
+
+# soc_wit W0
+afex::aov_ez(data = tab_soc_wit, dv = 'ABC_soc_wit_W0', between = c('condition', 'response_ABC_soc_wit'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_soc_wit, measurevar = "ABC_soc_wit_W0", groupvars = c("response_ABC_soc_wit"))
+
+```
+
+### ABC lethargy
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_lethargy = subset(tab, response_ABC_lethargy == "improvement" | response_ABC_lethargy == "stable")
+
+jmv::descriptives(tab_lethargy, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_ABC_lethargy, condition))
+
+# Age
+afex::aov_ez(data = tab_lethargy, dv = 'age', between = c('condition', 'response_ABC_lethargy'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_lethargy, dv = 'IQ', between = c('condition', 'response_ABC_lethargy'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_lethargy, dv = 'verbal_IQ', between = c('condition', 'response_ABC_lethargy'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_lethargy, dv = 'nonverbal_IQ', between = c('condition', 'response_ABC_lethargy'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_lethargy, dv = 'nbr_AE', between = c('condition', 'response_ABC_lethargy'), id = 'sub', type = 2)
+
+# lethargy W0
+afex::aov_ez(data = tab_lethargy, dv = 'ABC_lethargy_W0', between = c('condition', 'response_ABC_lethargy'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_lethargy, measurevar = "ABC_lethargy_W0", groupvars = c("response_ABC_lethargy"))
+
+```
+
+```{r}
+ggplot(tab,
+       aes(x=AIM_atypical_W0,
+           y=delta_AIM_atypical,
+           ))+
+  geom_point()+
+  geom_smooth(method='lm')+
+  scale_fill_hue(l=30)+scale_colour_hue(l=30)+
+  theme_classic() +
+  labs(x = "Baseline score", y = "improvement")
+ggsave("C:/Users/Admin/Desktop/ARBA/EEG behavioral measures/reg_improvement_AIM_atypical.png")
+```
+
+```{r}
+ggplot(subset(tab, response_AIM_com == "improvement"),
+       aes(x = condition,
+           y = age,
+           colour=condition,
+           fill=condition)) +
+  stat_summary(fun = mean, geom = 'bar', alpha = 0.5) +
+  stat_summary(fun.data = mean_se, geom = 'errorbar', width = 0.1) +
+  geom_point()
+ggsave("C:/Users/Admin/Desktop/ARBA/EEG behavioral measures/improvement_AIM_com.png")
+```
+
+```{r}
+ggplot(tab,
+       aes(x = response_AIM_atypical,
+           y = AIM_atypical_W0,
+           colour=response_AIM_atypical,
+           fill=response_AIM_atypical)) +
+  stat_summary(fun = mean, geom = 'bar', alpha = 0.5) +
+  stat_summary(fun.data = mean_se, geom = 'errorbar', width = 0.1) +
+  geom_point()
+ggsave("C:/Users/Admin/Desktop/ARBA/EEG behavioral measures/response_type_AIM_com.png")
+```
+
+
+
+
+```{r}
+ggplot(tab, aes(x=response_AIM_atypical, y=nbr_AE, fill = response_AIM_atypical))+
+  geom_bar(stat='identity')+
+  facet_wrap(~condition)
+
+ggplot(tab, aes(x=response_AIM_atypical, y=AIM_atypical_W0, fill = response_AIM_atypical))+
+  geom_bar(stat='identity')+
+  facet_wrap(~condition)
+```
+
+```{r}
+ggplot(tab, aes(x=response_AIM_com, y=age, fill = response_AIM_com))+
+  geom_bar(stat='identity')+
+  facet_wrap(~condition)
+```
+## SEQ
+
+### SEQ HYPER
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_HYPER = subset(tab, response_SEQ_HYPER == "improvement" | response_SEQ_HYPER == "stable")
+
+jmv::descriptives(tab_HYPER, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_HYPER, condition))
+
+# Age
+afex::aov_ez(data = tab_HYPER, dv = 'age', between = c('condition', 'response_SEQ_HYPER'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_HYPER, dv = 'IQ', between = c('condition', 'response_SEQ_HYPER'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_HYPER, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_HYPER'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_HYPER, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_HYPER'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_HYPER, dv = 'nbr_AE', between = c('condition', 'response_SEQ_HYPER'), id = 'sub', type = 2)
+
+# HYPER W0
+afex::aov_ez(data = tab_HYPER, dv = 'SEQ_HYPER_W0', between = c('condition', 'response_SEQ_HYPER'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_HYPER, measurevar = "SEQ_HYPER_W0", groupvars = c("response_SEQ_HYPER"))
+```
+
+### SEQ HYPO
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_HYPO = subset(tab, response_SEQ_HYPO == "improvement" | response_SEQ_HYPO == "stable")
+
+jmv::descriptives(tab_HYPO, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_HYPO, condition))
+
+# Age
+afex::aov_ez(data = tab_HYPO, dv = 'age', between = c('condition', 'response_SEQ_HYPO'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_HYPO, dv = 'IQ', between = c('condition', 'response_SEQ_HYPO'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_HYPO, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_HYPO'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_HYPO, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_HYPO'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_HYPO, dv = 'nbr_AE', between = c('condition', 'response_SEQ_HYPO'), id = 'sub', type = 2)
+
+# HYPO W0
+afex::aov_ez(data = tab_HYPO, dv = 'SEQ_HYPO_W0', between = c('condition', 'response_SEQ_HYPO'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_HYPO, measurevar = "SEQ_HYPO_W0", groupvars = c("response_SEQ_HYPO"))
+```
+
+### SEQ SIRS
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_SIRS = subset(tab, response_SEQ_SIRS == "improvement" | response_SEQ_SIRS == "stable")
+
+jmv::descriptives(tab_SIRS, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_SIRS, condition))
+
+# Age
+afex::aov_ez(data = tab_SIRS, dv = 'age', between = c('condition', 'response_SEQ_SIRS'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_SIRS, measurevar = "age", groupvars = c("response_SEQ_SIRS"))
+
+# IQ
+afex::aov_ez(data = tab_SIRS, dv = 'IQ', between = c('condition', 'response_SEQ_SIRS'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_SIRS, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_SIRS'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_SIRS, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_SIRS'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_SIRS, dv = 'nbr_AE', between = c('condition', 'response_SEQ_SIRS'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_SIRS, measurevar = "nbr_AE", groupvars = c("condition"))
+
+# SIRS W0
+afex::aov_ez(data = tab_SIRS, dv = 'SEQ_SIRS_W0', between = c('condition', 'response_SEQ_SIRS'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_SIRS, measurevar = "SEQ_SIRS_W0", groupvars = c("response_SEQ_SIRS"))
+```
+
+
+### SEQ EP
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_EP = subset(tab, response_SEQ_EP == "improvement" | response_SEQ_EP == "stable")
+
+jmv::descriptives(tab_EP, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_EP, condition))
+
+# Age
+afex::aov_ez(data = tab_EP, dv = 'age', between = c('condition', 'response_SEQ_EP'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_EP, dv = 'IQ', between = c('condition', 'response_SEQ_EP'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_EP, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_EP'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_EP, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_EP'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_EP, dv = 'nbr_AE', between = c('condition', 'response_SEQ_EP'), id = 'sub', type = 2)
+
+# EP W0
+afex::aov_ez(data = tab_EP, dv = 'SEQ_EP_W0', between = c('condition', 'response_SEQ_EP'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_EP, measurevar = "SEQ_EP_W0", groupvars = c("response_SEQ_EP"))
+```
+
+
+### SEQ social
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_social = subset(tab, response_SEQ_social == "improvement" | response_SEQ_social == "stable")
+
+jmv::descriptives(tab_social, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_social, condition))
+
+# Age
+afex::aov_ez(data = tab_social, dv = 'age', between = c('condition', 'response_SEQ_social'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_social, dv = 'IQ', between = c('condition', 'response_SEQ_social'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_social, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_social'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_social, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_social'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_social, dv = 'nbr_AE', between = c('condition', 'response_SEQ_social'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_social, measurevar = "nbr_AE", groupvars = c("condition"))
+
+# social W0
+afex::aov_ez(data = tab_social, dv = 'SEQ_social_W0', between = c('condition', 'response_SEQ_social'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_social, measurevar = "SEQ_social_W0", groupvars = c("response_SEQ_social"))
+```
+
+
+### SEQ nonsocial
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_nonsocial = subset(tab, response_SEQ_nonsocial == "improvement" | response_SEQ_nonsocial == "stable")
+
+jmv::descriptives(tab_nonsocial, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_nonsocial, condition))
+
+# Age
+afex::aov_ez(data = tab_nonsocial, dv = 'age', between = c('condition', 'response_SEQ_nonsocial'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_nonsocial, dv = 'IQ', between = c('condition', 'response_SEQ_nonsocial'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_nonsocial, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_nonsocial'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_nonsocial, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_nonsocial'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_nonsocial, dv = 'nbr_AE', between = c('condition', 'response_SEQ_nonsocial'), id = 'sub', type = 2)
+
+# nonsocial W0
+afex::aov_ez(data = tab_nonsocial, dv = 'SEQ_nonsocial_W0', between = c('condition', 'response_SEQ_nonsocial'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_nonsocial, measurevar = "SEQ_nonsocial_W0", groupvars = c("response_SEQ_nonsocial"))
+```
+
+
+### SEQ auditory
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_auditory = subset(tab, response_SEQ_auditory == "improvement" | response_SEQ_auditory == "stable")
+
+jmv::descriptives(tab_auditory, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_auditory, condition))
+
+# Age
+afex::aov_ez(data = tab_auditory, dv = 'age', between = c('condition', 'response_SEQ_auditory'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_auditory, dv = 'IQ', between = c('condition', 'response_SEQ_auditory'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_auditory, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_auditory'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_auditory, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_auditory'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_auditory, dv = 'nbr_AE', between = c('condition', 'response_SEQ_auditory'), id = 'sub', type = 2)
+
+# auditory W0
+afex::aov_ez(data = tab_auditory, dv = 'SEQ_auditory_W0', between = c('condition', 'response_SEQ_auditory'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_auditory, measurevar = "SEQ_auditory_W0", groupvars = c("response_SEQ_auditory"))
+```
+
+
+
+### SEQ visual
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_visual = subset(tab, response_SEQ_visual == "improvement" | response_SEQ_visual == "stable")
+
+jmv::descriptives(tab_visual, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_visual, condition))
+
+# Age
+afex::aov_ez(data = tab_visual, dv = 'age', between = c('condition', 'response_SEQ_visual'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_visual, dv = 'IQ', between = c('condition', 'response_SEQ_visual'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_visual, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_visual'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_visual, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_visual'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_visual, dv = 'nbr_AE', between = c('condition', 'response_SEQ_visual'), id = 'sub', type = 2)
+
+# visual W0
+afex::aov_ez(data = tab_visual, dv = 'SEQ_visual_W0', between = c('condition', 'response_SEQ_visual'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_visual, measurevar = "SEQ_visual_W0", groupvars = c("response_SEQ_visual"))
+```
+
+
+### SEQ tactile
+decline : N trop petit
+Norm et hetero --> OK
+```{r}
+tab_tactile = subset(tab, response_SEQ_tactile == "improvement" | response_SEQ_tactile == "stable")
+
+jmv::descriptives(tab_tactile, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_tactile, condition))
+
+# Age
+afex::aov_ez(data = tab_tactile, dv = 'age', between = c('condition', 'response_SEQ_tactile'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_tactile, dv = 'IQ', between = c('condition', 'response_SEQ_tactile'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_tactile, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_tactile'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_tactile, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_tactile'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_tactile, dv = 'nbr_AE', between = c('condition', 'response_SEQ_tactile'), id = 'sub', type = 2)
+
+# tactile W0
+afex::aov_ez(data = tab_tactile, dv = 'SEQ_tactile_W0', between = c('condition', 'response_SEQ_tactile'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_tactile, measurevar = "SEQ_tactile_W0", groupvars = c("response_SEQ_tactile"))
+```
+
+
+### SEQ gustatory/olfactory
+decline : N trop petit
+Norm et hetero --> nonverbal IQ hetero
+```{r}
+tab_gusta_olfac = subset(tab, response_SEQ_gusta_olfac == "improvement" | response_SEQ_gusta_olfac == "stable")
+
+
+jmv::descriptives(tab_gusta_olfac, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_gusta_olfac, condition))
+
+# Age
+afex::aov_ez(data = tab_gusta_olfac, dv = 'age', between = c('condition', 'response_SEQ_gusta_olfac'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_gusta_olfac, dv = 'IQ', between = c('condition', 'response_SEQ_gusta_olfac'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_gusta_olfac, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_gusta_olfac'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_gusta_olfac, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_gusta_olfac'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_gusta_olfac, dv = 'nbr_AE', between = c('condition', 'response_SEQ_gusta_olfac'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_gusta_olfac, measurevar = "nbr_AE", groupvars = c("condition"))
+
+# gusta_olfac W0
+afex::aov_ez(data = tab_gusta_olfac, dv = 'SEQ_gusta_olfac_W0', between = c('condition', 'response_SEQ_gusta_olfac'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_gusta_olfac, measurevar = "SEQ_gusta_olfac_W0", groupvars = c("response_SEQ_gusta_olfac"))
+```
+
+
+### SEQ vastibular/proprioception
+decline : N trop petit
+Norm et hetero --> 
+```{r}
+tab_ves_pro = subset(tab, response_SEQ_ves_pro == "improvement" | response_SEQ_ves_pro == "stable")
+
+jmv::descriptives(tab_ves_pro, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_ves_pro, condition))
+
+# Age
+afex::aov_ez(data = tab_ves_pro, dv = 'age', between = c('condition', 'response_SEQ_ves_pro'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_ves_pro, dv = 'IQ', between = c('condition', 'response_SEQ_ves_pro'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_ves_pro, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_ves_pro'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_ves_pro, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_ves_pro'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_ves_pro, dv = 'nbr_AE', between = c('condition', 'response_SEQ_ves_pro'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_ves_pro, measurevar = "nbr_AE", groupvars = c("condition"))
+
+# ves_pro W0
+afex::aov_ez(data = tab_ves_pro, dv = 'SEQ_ves_pro_W0', between = c('condition', 'response_SEQ_ves_pro'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_ves_pro, measurevar = "SEQ_ves_pro_W0", groupvars = c("response_SEQ_ves_pro"))
+```
+
+
+### SEQ total
+decline : N trop petit
+Norm et hetero --> 
+```{r}
+tab_total = subset(tab, response_SEQ_total == "improvement" | response_SEQ_total == "stable")
+
+jmv::descriptives(tab_total, vars(age, IQ, verbal_IQ, nonverbal_IQ, nbr_AE), skew = T, kurt = T, median = F, splitBy=c(response_SEQ_total, condition))
+
+# Age
+afex::aov_ez(data = tab_total, dv = 'age', between = c('condition', 'response_SEQ_total'), id = 'sub', type = 2)
+
+# IQ
+afex::aov_ez(data = tab_total, dv = 'IQ', between = c('condition', 'response_SEQ_total'), id = 'sub', type = 2)
+
+# Verbal IQ
+afex::aov_ez(data = tab_total, dv = 'verbal_IQ', between = c('condition', 'response_SEQ_total'), id = 'sub', type = 2)
+
+# Non verbal IQ
+afex::aov_ez(data = tab_total, dv = 'nonverbal_IQ', between = c('condition', 'response_SEQ_total'), id = 'sub', type = 2)
+
+# Nbr adverse events
+afex::aov_ez(data = tab_total, dv = 'nbr_AE', between = c('condition', 'response_SEQ_total'), id = 'sub', type = 2)
+
+# total W0
+afex::aov_ez(data = tab_total, dv = 'SEQ_total_W0', between = c('condition', 'response_SEQ_total'), id = 'sub', type = 2)
+Rmisc::summarySE(tab_total, measurevar = "SEQ_total_W0", groupvars = c("response_SEQ_total"))
+```
+
+
+## Effect of condition on nbr AE
+```{r}
+afex::aov_ez(data = tab, dv = 'nbr_AE', between = 'condition', id = 'sub')
+Rmisc::summarySE(tab, measurevar = "nbr_AE", groupvars = c("condition"))
+```
+```{r}
+placebo_imp_VABS3_COM = mean(subset(tab, condition == "placebo")$imp_VABS3_COM)
+placebo_imp_VABS3_SOC = mean(subset(tab, condition == "placebo")$imp_VABS3_SOC)
+placebo_imp_VABS3_IPR = mean(subset(tab, condition == "placebo")$imp_VABS3_IPR)
+placebo_imp_VABS3_PLA = mean(subset(tab, condition == "placebo")$imp_VABS3_PLA)
+placebo_imp_VABS3_COP = mean(subset(tab, condition == "placebo")$imp_VABS3_COP)
+
+placebo_imp_AIM_atypical = mean(subset(tab, condition == "placebo")$imp_AIM_atypical)
+placebo_imp_AIM_recip = mean(subset(tab, condition == "placebo")$imp_AIM_recip)
+placebo_imp_AIM_com = mean(subset(tab, condition == "placebo")$imp_AIM_com)
+placebo_imp_AIM_rep_beh = mean(subset(tab, condition == "placebo")$imp_AIM_rep_beh)
+
+placebo_imp_ABC_hyper = mean(subset(tab, condition == "placebo")$imp_ABC_hyper, na.rm = TRUE)
+placebo_imp_ABC_irrit = mean(subset(tab, condition == "placebo")$imp_ABC_irrit, na.rm = TRUE)
+placebo_imp_ABC_ste_beh = mean(subset(tab, condition == "placebo")$imp_ABC_ste_beh, na.rm = TRUE)
+placebo_imp_ABC_inap = mean(subset(tab, condition == "placebo")$imp_ABC_inap, na.rm = TRUE)
+placebo_imp_ABC_soc_wit = mean(subset(tab, condition == "placebo")$imp_ABC_soc_wit, na.rm = TRUE)
+placebo_imp_ABC_lethargy = mean(subset(tab, condition == "placebo")$imp_ABC_lethargy, na.rm = TRUE)
+
+placebo_imp_SEQ_HYPER = mean(subset(tab, condition == "placebo")$imp_SEQ_HYPER)
+placebo_imp_SEQ_HYPO = mean(subset(tab, condition == "placebo")$imp_SEQ_HYPO)
+placebo_imp_SEQ_SIRS = mean(subset(tab, condition == "placebo")$imp_SEQ_SIRS)
+placebo_imp_SEQ_EP = mean(subset(tab, condition == "placebo")$imp_SEQ_EP)
+placebo_imp_SEQ_social = mean(subset(tab, condition == "placebo")$imp_SEQ_social)
+placebo_imp_SEQ_nonsocial = mean(subset(tab, condition == "placebo")$imp_SEQ_nonsocial)
+placebo_imp_SEQ_auditory = mean(subset(tab, condition == "placebo")$imp_SEQ_auditory)
+placebo_imp_SEQ_visual = mean(subset(tab, condition == "placebo")$imp_SEQ_visual)
+placebo_imp_SEQ_tactile = mean(subset(tab, condition == "placebo")$imp_SEQ_tactile)
+placebo_imp_SEQ_gusta_olfac = mean(subset(tab, condition == "placebo")$imp_SEQ_gusta_olfac)
+placebo_imp_SEQ_ves_pro = mean(subset(tab, condition == "placebo")$imp_SEQ_ves_pro)
+placebo_imp_SEQ_total = mean(subset(tab, condition == "placebo")$imp_SEQ_total)
+tab$imp_VABS3
+
+
+ls_imp = c(placebo_imp_VABS3_COM, placebo_imp_VABS3_SOC, placebo_imp_VABS3_IPR, placebo_imp_VABS3_PLA, placebo_imp_VABS3_COP,
+           placebo_imp_AIM_atypical, placebo_imp_AIM_recip, placebo_imp_AIM_com, placebo_imp_AIM_rep_beh,
+           placebo_imp_ABC_hyper, placebo_imp_ABC_irrit, placebo_imp_ABC_ste_beh, placebo_imp_ABC_inap, placebo_imp_ABC_soc_wit, placebo_imp_ABC_lethargy,
+           placebo_imp_SEQ_HYPER, placebo_imp_SEQ_HYPO, placebo_imp_SEQ_SIRS, placebo_imp_SEQ_EP, placebo_imp_SEQ_social, placebo_imp_SEQ_nonsocial, placebo_imp_SEQ_auditory, placebo_imp_SEQ_visual, placebo_imp_SEQ_tactile, placebo_imp_SEQ_gusta_olfac, placebo_imp_SEQ_ves_pro, placebo_imp_SEQ_total)
+ls_imp
+min(ls_imp)
+max(ls_imp)
+```
+
