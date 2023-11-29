@@ -20,7 +20,6 @@ library('expss')
 library('epiDisplay')
 library("writexl")
 library('tidyverse')
-library("ggplot2")
 ```
 
 
