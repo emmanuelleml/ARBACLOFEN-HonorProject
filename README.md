@@ -1,8 +1,8 @@
 # ARBACLOFEN
-Honor reasearch project - does baseline sympton severity predict the response to arbaclofen among children with autism spectrum disorder?
+Honor reasearch project - can baseline symptom severity predict the response to arbaclofen in children and adolescents with ASD?
 
-Program : B.Sc. Cognitive neuroscience, Université de Montréal
+Emmanuelle Mazur-Lainé, B.Sc. Cognitive neuroscience, Université de Montréal, Département de psychologie
 
-Supervisor : Dre Sarah Lippé, Ph.D.
+Uner de supervision of Dre Sarah Lippé, Ph.D, Université de Montréal, Département de psychologie
 
-Lab : Neuroscience of Early Developpement, Centre de recherche du centre hospitalier universitaire Sainte-Justine
+Neuroscience of Early Developpement Lab, Centre de recherche du CHU Sainte-Justine
