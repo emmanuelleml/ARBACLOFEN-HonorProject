@@ -1,0 +1,428 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library('dplyr')
+library('lme4')
+library('sjmisc')
+library("ggplot2")
+library('afex')
+library('jmv')
+library('emmeans')
+library('effectsize')
+library('rstatix')
+library('haven')
+library("readxl")
+library('expss')
+library('epiDisplay')
+library("writexl")
+library('tidyverse')
+library("ggplot2")
+library("ggpubr")
+library("gginnards")
+library("ggpmisc")
+```
+
+
+```{r}
+data <- read_excel("C:/Users/Admin/Desktop/PSY40001/Honor database.xlsx")
+```
+
+```{r}
+# ** inverser les baseline scores pour VABS3. Dèjà inversé pour delta
+tab <- data.frame(sub = data$sub, condition = data$cond, gender = factor(data$GENDER_STD), age = data$AGE,
+                  IQ = data$FULL_SCALE_IQ, verbal_IQ = data$VERBAL_IQ, nonverbal_IQ = data$NON_VERBAL_IQ,
+                  VABS3_SOC_W0 = -data$VABS3_SOC_SS.0, delta_VABS3_SOC = data$delta_VABS3_SOC, 
+                  AIM_rep_beh_W0 = data$AIM_repetitive_behavior.0, delta_AIM_rep_beh = data$delta_AIM_repetitive_behavior, 
+                  ABC_irrit_W0 = data$ABC_Irritability.0, delta_ABC_irrit = data$delta_ABC_irrit,
+                  ABC_ste_beh_W0 = data$ABC_Stereotypy.0, delta_ABC_ste_beh = data$delta_ABC_stereotypy,
+                  ABC_lethargy_W0 = data$ABC_Lethargy.0, delta_ABC_lethargy = data$delta_ABC_lethargy)
+```
+
+
+
+```{r}
+tab['condition'][tab['condition'] == "0"] <- "placebo"
+tab['condition'][tab['condition'] == "1"] <- "ARBA"
+tab <- subset(tab, sub != 1140446) # aucun score post
+tab <- subset(tab, sub != 3940431) # a juste les post VABS
+
+# Changer le score pré de 3940439 pour NA pour pas que son score soit inclus dans les moyennes et tout
+tab['ABC_ste_beh_W0'][tab['sub'] == 3940349] <- NA
+```
+
+
+# Variables sociodémographiques et autres (vérifier l'équivalence des groupes)
+```{r}
+# Groupes
+frq(tab$gender)
+# Sexe
+frq(subset(tab, condition == "ARBA")$gender)
+frq(subset(tab, condition == "placebo")$gender)
+mean(tab$nonverbal_IQ)
+```
+
+
+```{r}
+chisq_gender <- data.frame(groupe = c(rep("ARBA", 32), rep("placebo", 29)),
+                 ratio = c(rep(1, 21), rep(0, 8),
+                           rep(1, 24), rep(0, 8)))
+chisq.test(chisq_gender$groupe, chisq_gender$ratio)
+
+# Âge
+t.test(age ~ condition, data = tab)
+jmv::descriptives(tab, vars= vars(age), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+# IQ
+t.test(IQ ~ condition, data = tab)
+jmv::descriptives(tab, vars= vars(IQ), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+# Verbal IQ
+t.test(verbal_IQ ~ condition, data = tab)
+jmv::descriptives(tab, vars= vars(verbal_IQ), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+# Non-verbal IQ
+t.test(nonverbal_IQ ~ condition, data = tab)
+jmv::descriptives(tab, vars= vars(nonverbal_IQ), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+# irritabilité baseline
+t.test(ABC_irrit_W0 ~ condition, data = tab)
+jmv::descriptives(tab, vars= vars(ABC_irrit_W0), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+# Léthargie baseline
+t.test(ABC_lethargy_W0 ~ condition, data = tab)
+jmv::descriptives(tab, vars= vars(ABC_lethargy_W0), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+# Stereotypic behaviour baseline
+t.test(ABC_ste_beh_W0 ~ condition, data = tab)
+jmv::descriptives(tab, vars= vars(ABC_ste_beh_W0), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+# Repetitive behaviour baseline
+t.test(AIM_rep_beh_W0 ~ condition, data = tab)
+jmv::descriptives(tab, vars= vars(AIM_rep_beh_W0), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+```
+
+# Moyennes et ÉT
+```{r}
+jmv::descriptives(tab, vars= vars(ABC_irrit_W0, delta_ABC_irrit), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+jmv::descriptives(tab, vars= vars(ABC_lethargy_W0, delta_ABC_lethargy), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+jmv::descriptives(tab, vars= vars(ABC_ste_beh_W0, delta_ABC_ste_beh), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+jmv::descriptives(tab, vars= vars(AIM_rep_beh_W0, delta_AIM_rep_beh), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+```
+
+
+# ABC irritabilité
+
+## Postulats
+```{r}
+# linéarité --> OUTLIERS
+plot(tab$ABC_irrit_W0, tab$delta_ABC_irrit, xlab = "irritabilité baseline", ylab = "Amélioration irritabilité", main = "Linéarité irritabilité")
+    # Vérification et correction scores extrêmes
+scores_z = data.frame(sub = tab$sub, condition = tab$condition)
+scores_z$delta_ABC_irrit = scale(tab$delta_ABC_irrit)
+subset(scores_z, abs(delta_ABC_irrit)>3.29)
+
+
+    # Placebo linéarité
+plot(subset(tab, condition == "placebo")$ABC_irrit_W0, subset(tab, condition == "placebo")$delta_ABC_irrit, xlab = "irritabilité baseline", ylab = "Amélioration irritabilité", main = "Linéarité irritabilité - PLACEBO")
+    # ARBA linéarité
+plot(subset(tab, condition == "ARBA")$ABC_irrit_W0, subset(tab, condition == "ARBA")$delta_ABC_irrit, xlab = "irritabilité baseline", ylab = "Amélioration irritabilité", main = "Linéarité irritabilité - ARBA")
+```
+
+## Régression
+```{r}
+# Interaction !!!
+irrit_baseline <- lm(delta_ABC_irrit ~ ABC_irrit_W0*condition, data = tab)
+summary(irrit_baseline$residuals)
+cohen.d(irrit_baseline$residuals)
+
+    # POST HOCS ()
+irrit_baseline_ARBA <- lm(delta_ABC_irrit ~ ABC_irrit_W0, data = subset(tab, condition == "ARBA")) # OUI!!!
+summary(irrit_baseline_ARBA)
+
+irrit_baseline_placebo <- lm(delta_ABC_irrit ~ ABC_irrit_W0, data = subset(tab, condition == "placebo")) # NON
+summary(irrit_baseline_placebo)
+
+# --> L'irritabilité pré-traitement est prédictive de l'amélioration de l'irritabilité, seulement chez le groupe ARBA
+```
+
+## Postulats (suite)
+```{r}
+# Normalité de la distribution des résiduels
+    # Histogramme
+tab$res_irrit <- residuals(irrit_baseline)
+
+ggplot(tab, aes(x = res_irrit)) + geom_histogram() +
+  labs(title="Histogramme des résiduels pour delta_irrit", 
+       x="Résiduels", y = "Fréquence")
+    # Kurtose et skewness des résiduels --> OK
+jmv::descriptives(tab, vars= vars(res_irrit), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+#####################################################################################
+
+# Homogénéitié de la variance des résiduels (homoscédasticité) --> PAS PIRE
+ggplot(tab, aes(x = ABC_irrit_W0, y = residuals(irrit_baseline), colour = condition)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(y = "Résiduels delta_irritabilité",
+    x = "Irritabilité pré-traitement",
+    color = "Condition")
+```
+
+### Visualisation régression irritabilité
+```{r}
+ggplot(tab, aes(x=ABC_irrit_W0, y=delta_ABC_irrit, color = condition)) + geom_point() +
+  geom_smooth(method = "lm", se = FALSE, aes(linetype=condition)) +
+  theme_bw() + labs(x = "Sévérité de l'irritabilité pré-traitement",
+      y = "Amélioration de l'irritabilité",
+      color = "Condition")+
+  stat_ma_eq(aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "*\",  \"*")))
+
+ggsave("Figure_irritabilité_baseline.png", width=6, height=4)
+```
+
+
+
+# ABC Lethargy
+## Postulats
+```{r}
+# Linéarité --> OK
+plot(tab$ABC_lethargy_W0, tab$delta_ABC_lethargy, xlab = "Léthargie baseline", ylab = "Amélioration Léthargie", main = "Linéarité Léthargie")
+    # Vérification et correction scores extrêmes
+scores_z$delta_ABC_lethargy = scale(tab$delta_ABC_lethargy)
+subset(scores_z, abs(delta_ABC_lethargy)>3.29) # --> AUCUN
+```
+
+
+## Régression léthargie
+```{r}
+lethargy_baseline <- lm(delta_ABC_lethargy ~ ABC_lethargy_W0*condition, data = tab) # INTERACTION
+
+lethargy_baseline_ARBA <- lm(delta_ABC_lethargy ~ ABC_lethargy_W0, data = subset(tab, condition == "ARBA")) # OUI
+summary(lethargy_baseline_ARBA)
+
+lethargy_baseline_placebo <- lm(delta_ABC_lethargy ~ ABC_lethargy_W0, data = subset(tab, condition == "placebo")) # NON
+summary(lethargy_baseline_placebo)
+# --> L'effet de l'irritabilité pré-traitement est prédictive de l'amélioration de l'irritabilité, seulement chez le groupe ARBA
+```
+
+## Postulats (suite)
+```{r}
+# Normalité de la distribution des résiduels
+    # Histogramme
+tab_lethargy <- subset(tab, !is.na(delta_ABC_lethargy))
+tab_lethargy$res_let <- residuals(lethargy_baseline)
+
+ggplot(tab_lethargy, aes(x = res_let)) + geom_histogram() +
+  labs(title="Histogramme des résiduels pour delta_lethargy", 
+       x="Résiduels", y = "Fréquence")
+    # Kurtose et skewness des résiduels --> PAS OK
+jmv::descriptives(tab_lethargy, vars= vars(res_let), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+#####################################################################################
+
+# Homogénéitié de la variance des résiduels (homoscédasticité) --> PAS PIRE
+ggplot(tab_lethargy, aes(x = ABC_lethargy_W0, y = res_let, colour = condition)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(y = "Résiduels delta_lethargy",
+    x = "Léthargie pré-traitement",
+    color = "Condition")
+```
+
+## Visualisation ABC léthargie
+```{r}
+ggplot(tab, aes(x=ABC_lethargy_W0, y=delta_ABC_lethargy, color = condition)) + geom_point() +
+  geom_smooth(method = "lm", se = FALSE, aes(linetype=condition)) +
+  theme_bw() + labs(x = "Sévérité de la léthargie pré-traitement",
+      y = "Amélioration de la léthargie",
+      color = "Condition")+
+  stat_ma_eq(aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "*\",  \"*")))
+
+ggsave("Figure_lethargie_baseline.png", width = 6, height = 4)
+```
+
+
+# ABC Stereotypic behaviour
+##Postulats
+```{r}
+# Linéarité
+plot(tab$ABC_ste_beh_W0, tab$delta_ABC_ste_beh, xlab = "Social withdrawal baseline", ylab = "Amélioration social withdrawal", main = "Linéarité social withdrawal")
+    # Vérification et correction scores extrêmes
+scores_z$delta_ABC_ste_beh = scale(tab$delta_ABC_ste_beh)
+subset(scores_z, abs(delta_ABC_ste_beh)>3.29) # --> 3940439
+```
+
+## Régression
+```{r}
+ste_beh_baseline <- lm(delta_ABC_ste_beh ~ ABC_ste_beh_W0*condition, data = tab) # interaction presque sig, mais NON
+summary(ste_beh_baseline)
+  # POST HOCS
+ste_beh_baseline_ARBA <- lm(delta_ABC_ste_beh ~ ABC_ste_beh_W0, data = subset(tab, condition == "ARBA")) # OUI
+summary(ste_beh_baseline_ARBA)
+
+ste_beh_baseline_placebo <- lm(delta_ABC_ste_beh ~ ABC_ste_beh_W0, data = subset(tab, condition == "placebo")) # NON
+summary(ste_beh_baseline_placebo)
+```
+
+## Postulats (suite)
+```{r}
+# Normalité de la distribution des résiduels
+    # Histogramme
+tab_ste_beh <- subset(tab, !is.na(delta_ABC_ste_beh)) # Nouveau df sans le id manquant
+tab_ste_beh$res_ste_beh <- residuals(ste_beh_baseline)
+
+ggplot(tab_ste_beh, aes(x = res_ste_beh)) + geom_histogram() +
+  labs(title="Histogramme des résiduels pour delta stereotypie", 
+       x="Résiduels", y = "Fréquence")
+    # Kurtose et skewness des résiduels --> PAS OK
+jmv::descriptives(tab_ste_beh, vars= vars(res_ste_beh), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+#####################################################################################
+
+# Homogénéitié de la variance des résiduels (homoscédasticité) --> PAS PIRE
+ggplot(tab_ste_beh, aes(x = ABC_ste_beh_W0, y = res_ste_beh, colour = condition)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(y = "Résiduels delta_ste_beh",
+    x = "Stereotypie pré-traitement",
+    color = "Condition")
+```
+
+
+## Visualisation ABC Stereotypy
+```{r}
+ggplot(tab, aes(x=ABC_ste_beh_W0, y=delta_ABC_ste_beh, color = condition)) + geom_point() +
+  geom_smooth(method = "lm", se = FALSE, aes(linetype=condition)) +
+  theme_bw() + labs(x = "Sévérité des comportements stéréotypiques pré-traitement",
+      y = "Amélioration des comportements stéréotypiques",
+      color = "Condition")+
+  stat_ma_eq(aes(label = paste(after_stat(eq.label), after_stat(rr.label), sep = "*\",  \"*")))
+
+ggsave("Figure_stereotypie_baseline.png", width = 6, height = 4)
+```
+
+
+# AIM repetitive behavior
+## Postulats
+```{r}
+# Linéarité --> OK
+plot(tab$AIM_rep_beh_W0, tab$delta_AIM_rep_beh, xlab = "Baseline", ylab = "Amélioration", main = "Linéarité")
+    # Vérification et correction scores extrêmes
+scores_z$delta_AIM_rep_beh = scale(tab$delta_AIM_rep_beh)
+subset(scores_z, abs(delta_AIM_rep_beh)>3.29) # --> AUCUN
+```
+
+
+# Régression
+```{r}
+rep_beh_baseline <- lm(delta_AIM_rep_beh ~ AIM_rep_beh_W0*condition, data = tab) # EFFET DE LA BASELINE, MAIS PAS D'INTERACTION. SIG pour les 2 groupes
+summary(rep_beh_baseline)
+
+rep_beh_baseline_ARBA <- lm(delta_AIM_rep_beh ~ AIM_rep_beh_W0, data = subset(tab, condition == "ARBA")) # OUI
+summary(rep_beh_baseline_ARBA)
+
+rep_beh_baseline_placebo <- lm(delta_AIM_rep_beh ~ AIM_rep_beh_W0, data = subset(tab, condition == "placebo")) # OUI
+summary(rep_beh_baseline_placebo)
+```
+
+## Postulats (suite)
+```{r}
+# Normalité de la distribution des résiduels
+    # Histogramme
+tab$res_rep_beh <- residuals(rep_beh_baseline)
+
+ggplot(tab, aes(x = res_rep_beh)) + geom_histogram() +
+  labs(title="Histogramme des résiduels pour delta repetitive behavior", 
+       x="Résiduels", y = "Fréquence")
+    # Kurtose et skewness des résiduels
+jmv::descriptives(tab, vars= vars(res_rep_beh), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+#####################################################################################
+
+# Homogénéitié de la variance des résiduels (homoscédasticité) --> BOF
+ggplot(tab, aes(x = AIM_rep_beh_W0, y = res_rep_beh, colour = condition)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(y = "Résiduels delta_rep_beh",
+    x = "Pré-traitement",
+    color = "Condition")
+```
+
+## Visualisation AIM repetitive behavior
+```{r}
+ggplot(tab, aes(x = AIM_rep_beh_W0, y = delta_AIM_rep_beh, colour = condition)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(y = "Amélioration des comportements répétitifs",
+    x = "Sévérité des comportements répétitifs pré-traitement",
+    color = "Condition")+
+    theme(legend.position="top")
+
+
+ggsave("Repetitive_behavior_baseline.png", width=5, height=5)
+```
+
+# VABS3 Socialisation
+## Postulats
+```{r}
+# linéarité --> semble ok
+plot(tab$VABS3_SOC_W0, tab$delta_VABS3_SOC, xlab = "Socialisation baseline", ylab = "Amélioration socialisation", main = "Linéarité socialisation")
+    # Vérification et correction scores extrêmes
+scores_z$delta_VABS3_SOC = scale(tab$delta_VABS3_SOC)
+subset(scores_z, abs(delta_VABS3_SOC)>3.29) # --> AUCUN
+```
+
+## Régression
+```{r}
+SOC_baseline <- lm(delta_VABS3_SOC ~ VABS3_SOC_W0*condition, data = tab) # EFFET DE LA BASELINE, MAIS PAS D'INTERACTION
+summary(SOC_baseline)
+
+    # POST HOCS
+SOC_baseline_placebo <- lm(delta_VABS3_SOC ~ VABS3_SOC_W0, data = subset(tab, condition == "placebo")) # OUI
+summary(SOC_baseline_placebo)
+
+SOC_baseline_ARBA <- lm(delta_VABS3_SOC ~ VABS3_SOC_W0, data = subset(tab, condition == "ARBA")) # OUI
+summary(SOC_baseline_ARBA)
+```
+
+## Postulats (suite)
+```{r}
+# Normalité de la distribution des résiduels --> OK
+    # Histogramme
+tab$res_soc <- residuals(SOC_baseline)
+
+ggplot(tab, aes(x = res_soc)) + geom_histogram() +
+  labs(title="Histogramme des résiduels pour delta_SOC", 
+       x="Résiduels", y = "Fréquence")
+    # Kurtose et skewness des résiduels
+jmv::descriptives(tab, vars= vars(res_soc), skew = T, kurt = T, variance = TRUE, splitBy = condition)
+
+#####################################################################################
+
+# Homogénéitié de la variance des résiduels (homoscédasticité) --> BOF
+ggplot(tab, aes(x = VABS3_SOC_W0, y = residuals(SOC_baseline), colour = condition)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(y = "Résiduels",
+    x = "Pré-traitement",
+    color = "Condition")
+```
+
+## Visualisation régression Socialisation
+```{r}
+ggplot(tab, aes(x = VABS3_SOC_W0, y = delta_VABS3_SOC, , colour = condition)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(y = "Amélioration de la socialisation",
+    x = "Sévérité des difficultés de socialisation pré-traitement",
+    color = "Condition")
+
+ggsave("Socialisation_baseline.png")
+```
