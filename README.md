@@ -1,5 +1,5 @@
 # ARBACLOFEN
-Honor reasearch project - can baseline symptom severity predict the response to arbaclofen in children and adolescents with ASD?
+Symptomatic predictors of the response to _arbaclofen_ among youth with autism spectrum disorder
 
 Emmanuelle Mazur-Lainé, B.Sc. Cognitive neuroscience, Université de Montréal, Département de psychologie
 
